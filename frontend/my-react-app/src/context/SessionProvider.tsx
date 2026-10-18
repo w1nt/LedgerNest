@@ -7,7 +7,8 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { isCancel, isAxiosError } from "axios";
+import { isCancel } from "axios";
+import { isUnauthorized } from "../services/errors";
 import type { User } from "../types/billing";
 import {
   getCurrentUser,
@@ -87,9 +88,7 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
           isCancel(error)
         )
           return;
-        clearSession(
-          isAxiosError(error) && error.response?.status === 401 ? "" : error,
-        );
+        clearSession(isUnauthorized(error) ? "" : error);
       })
       .finally(() => {
         if (!controller.signal.aborted && attempt === revision.current)

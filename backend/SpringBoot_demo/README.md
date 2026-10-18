@@ -1,6 +1,14 @@
-# LedgerNest 后端
+# LedgerNest 后端（Java 迁移参考）
 
 当前版本为 `0.1.0-SNAPSHOT`，由根目录 `VERSION` 和 `scripts/sync-version.mjs` 管理。目录名与 Java 包名暂沿用原型，以控制迁移范围。
+
+## Electron 替代进度 — 2026-10-18
+
+日常桌面启动已改为仓库根目录 npm start，不需要本目录的 Java 进程。desktop/ 下的 TypeScript 本机业务层通过受限 IPC 提供注册、登录、当前用户、退出、账单分页及新增；使用 Node 内置 SQLite，兼容当前十表结构、整数分、UTC 时间和 PBKDF2 密码哈希。现有 React 账单、概览和趋势图已接通本地数据。
+
+本目录保留为迁移对照：资料/密码修改、偏好接口、账单编辑/删除、独立汇总/提醒及结算操作尚未移植到桌面接口，不应视为全量迁移完成。不增加支付执行；新业务在 desktop/ 开发。数据库文件沿用根目录 data/ledgernest.sqlite，桌面测试使用隔离文件；不要同时运行两套写入程序。桌面 schema 在 database/schema.sql，测试核对与本目录 schema 一致。
+
+本文件下方的 HTTP 启动、Cookie、Java 分层与支付登记说明仅描述保留的参考实现。桌面启动、测试与安全边界见根 README。测试数据改用根目录 npm run seed:example，不依赖 HTTP 服务。
 
 ## 方向变更 — 2026-10-17
 

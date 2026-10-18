@@ -1,0 +1,26 @@
+{
+  "name": "ledgernest-desktop",
+  "version": "0.1.0-SNAPSHOT",
+  "private": true,
+  "type": "module",
+  "main": "desktop/dist/main.cjs",
+  "engines": {
+    "node": ">=24.17.0"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend/my-react-app run build && npm run build:desktop",
+    "build:desktop": "tsc -p desktop/tsconfig.json && node scripts/build-desktop.mjs",
+    "start": "npm run build && node scripts/start-desktop.mjs",
+    "start:built": "node scripts/start-desktop.mjs",
+    "test": "node --test desktop/tests/*.test.mjs",
+    "test:desktop": "npm run build && node desktop/tests/electron.e2e.mjs",
+    "seed:example": "node scripts/seed-desktop.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.0",
+    "electron": "44.9.0",
+    "esbuild": "0.28.2",
+    "playwright": "1.64.1",
+    "typescript": "5.9.3"
+  }
+}

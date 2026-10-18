@@ -1,3 +1,4 @@
+import { DesktopRequestError } from "./desktop.ts";
 import { isAxiosError } from "axios";
 import { backendMessage } from "../i18n/backendMessages.ts";
 import { ValidationError, hasUnsafeControls } from "../security/validation.ts";
@@ -14,6 +15,11 @@ class BackendFailure {
 export function captureError(error: unknown): ValidationError | BackendFailure {
   if (error instanceof ValidationError || error instanceof BackendFailure)
     return error;
+  if (error instanceof DesktopRequestError) {
+    if (error.status >= 500) return new ValidationError("api.unavailable");
+    if (error.status === 429) return new ValidationError("api.rateLimit");
+    return new BackendFailure(error.status, error.message);
+  }
   if (isAxiosError(error)) {
     if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT")
       return new ValidationError("api.timeout");
@@ -50,4 +56,11 @@ export function errorMessage(error: unknown) {
   return failure instanceof ValidationError
     ? failure.localizedMessage()
     : backendMessage(failure.message, failure.status);
+}
+
+export function isUnauthorized(error: unknown) {
+  return (
+    (error instanceof DesktopRequestError && error.status === 401) ||
+    (isAxiosError(error) && error.response?.status === 401)
+  );
 }

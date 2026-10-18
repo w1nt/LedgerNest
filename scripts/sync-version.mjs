@@ -15,7 +15,7 @@ function update(path, transform) {
     writeFileSync(file, next);
   }
 }
-for (const path of ['frontend/my-react-app/package.json', 'frontend/my-react-app/package-lock.json']) {
+for (const path of ['package.json', 'package-lock.json', 'frontend/my-react-app/package.json', 'frontend/my-react-app/package-lock.json']) {
   update(path, text => {
     const data = JSON.parse(text);
     data.version = version;
