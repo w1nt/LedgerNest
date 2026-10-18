@@ -1,0 +1,43 @@
+# Machine-local tools, encrypted credentials and repository backups
+/.local-tools/
+/.aws/
+/LOCAL-ENVIRONMENT.md
+.env
+.env.*
+!.env.example
+*.dpapi
+
+# Dependencies and build outputs
+node_modules/
+dist/
+dist-ssr/
+target/
+coverage/
+*.log
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Private development notes (retain the original repository rules)
+/frontend/前端UI开发记录.md
+/backend/SpringBoot_demo/后端API开发记录.md
+
+# Local financial data and backups
+/data/
+/backups/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.sql.gz
+*.dump
+*.bak
+*.pem
+*.key
+*.p12
+*.pfx

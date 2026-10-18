@@ -1,0 +1,4 @@
+node_modules/
+
+# Local frontend development notes; keep out of GitHub.
+/前端UI开发记录.md

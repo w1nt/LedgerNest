@@ -1,0 +1,595 @@
+/* 精简界面的共享组件样式。颜色沿用 index.css 的主题令牌；尺寸使用相对单位。
+ * 新页面优先组合 ui/ 下组件，避免复制布局或按页面追加例外。 */
+:root {
+  --sidebar-width: 5.25rem;
+  --control-size: 2.65rem;
+  --card-radius: 1rem;
+}
+.sidebar {
+  align-items: center;
+  padding: 1.8rem 0.8rem;
+  gap: 2.75rem;
+  z-index: 30;
+}
+.sidebar .brand {
+  padding: 0;
+}
+.sidebar nav,
+.sidebar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+}
+.sidebar-bottom {
+  padding-top: 1rem;
+}
+.sidebar nav .icon-button,
+.sidebar-bottom .icon-button {
+  position: relative;
+  justify-content: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  padding: 0.75rem;
+  border-radius: 0.85rem;
+}
+.sidebar .icon-button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.sidebar .icon-button.active::before {
+  content: "";
+  position: absolute;
+  width: 0.16rem;
+  height: 1.1rem;
+  border-radius: 1rem;
+  left: -0.75rem;
+  top: calc(50% - 0.55rem);
+  background: currentColor;
+}
+.topbar {
+  background: var(--bg);
+  border-bottom: 0;
+  min-height: 5rem;
+}
+.topbar-search,
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.topbar-actions {
+  gap: 0.65rem;
+}
+.global-search {
+  display: block;
+  min-width: 0;
+}
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  color: var(--muted);
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  padding: 0.3rem 0.6rem;
+}
+.search-field input {
+  min-width: 0;
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0;
+}
+.search-field:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.search-field input:focus-visible {
+  outline: 0;
+}
+.global-search .search-field input {
+  width: clamp(6rem, 15vw, 16rem);
+}
+.demo-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+.demo-indicator > span {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.55rem;
+  border-radius: 2rem;
+}
+.main-content {
+  max-width: 86rem;
+  padding-top: 1.25rem;
+}
+.page-heading {
+  align-items: center;
+  margin: 0.25rem 0 1.75rem;
+}
+.page-heading h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  font-weight: 560;
+}
+.page-actions {
+  gap: 0.65rem;
+}
+.icon-button {
+  position: relative;
+  min-width: var(--control-size);
+  min-height: var(--control-size);
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+.icon-button.primary-action {
+  background: var(--strong);
+  color: var(--on-strong);
+}
+.icon-button.primary-action:hover:not(:disabled) {
+  background: var(--accent);
+}
+.icon-button.profile-action {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 50%;
+}
+.icon-button.danger-action:hover:not(:disabled) {
+  background: var(--red-bg);
+  color: var(--red);
+}
+.action-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.action-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.action-tooltip:focus-within,
+.action-tooltip:hover {
+  z-index: 5;
+}
+.action-tooltip-label {
+  overflow-wrap: anywhere;
+  position: absolute;
+  z-index: 70;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.5rem;
+  background: var(--strong);
+  color: var(--on-strong);
+  box-shadow: var(--shadow);
+  font-size: 0.68rem;
+  font-weight: 450;
+  line-height: 1.6;
+  text-align: start;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.2rem);
+}
+/* 透明桥接区域让鼠标能移到提示上，Escape 可立即收起。 */
+.action-tooltip-label::before {
+  content: "";
+  position: absolute;
+  inset: -0.5rem 0 100%;
+}
+.action-tooltip[data-side="right"] .action-tooltip-label {
+  right: auto;
+  left: calc(100% + 0.65rem);
+  top: 50%;
+  transform: translate(-0.2rem, -50%);
+}
+.action-tooltip[data-side="right"] .action-tooltip-label::before {
+  inset: 0 100% 0 -0.75rem;
+}
+.action-tooltip[data-side="top"] .action-tooltip-label {
+  top: auto;
+  bottom: calc(100% + 0.45rem);
+  transform: translateY(0.2rem);
+}
+.action-tooltip[data-side="top"] .action-tooltip-label::before {
+  inset: 100% 0 -0.5rem;
+}
+.action-tooltip[data-open="true"] > .action-tooltip-label {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.action-tooltip[data-side="right"][data-open="true"] > .action-tooltip-label {
+  transform: translate(0, -50%);
+}
+.theme-control {
+  gap: 0.15rem;
+  padding: 0.2rem;
+  background: var(--surface);
+}
+.theme-control button,
+.settings-panel .theme-control button {
+  min-width: 2.6rem;
+  min-height: 2.6rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+}
+.theme-control.compact button {
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0.4rem;
+}
+.theme-control button.selected {
+  background: var(--accent-soft);
+  border-color: transparent;
+  box-shadow: none;
+}
+.month-picker {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 0.75rem;
+}
+.month-picker input {
+  width: 9rem;
+}
+.panel {
+  overflow: visible;
+  border-radius: var(--card-radius);
+}
+.panel-heading {
+  min-height: 4.5rem;
+}
+.panel-heading h2 {
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+.panel-heading h2 > .icon {
+  color: var(--muted);
+}
+.metric-card {
+  display: block;
+  position: relative;
+  text-align: start;
+  border-radius: var(--card-radius);
+  padding: 1.3rem 1.4rem 1.65rem;
+  width: 100%;
+}
+.metric-card > strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.5rem, 2.3vw, 2.2rem);
+  letter-spacing: -0.05em;
+  margin-top: 1.5rem;
+}
+.metric-arrow {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.7rem;
+  width: 0.9rem;
+  opacity: 0;
+}
+.metric-card:is(:hover, :focus-visible) .metric-arrow {
+  opacity: 0.6;
+}
+.metric-detail > strong {
+  display: block;
+  font-size: 2rem;
+  margin: 1.5rem 0;
+  font-variant-numeric: tabular-nums;
+}
+.overview-grid {
+  grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
+}
+.bill-list {
+  padding: 0 0.8rem 0.8rem;
+}
+.bill-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: start;
+  padding: 1rem 0.6rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+}
+.bill-list-item + .bill-list-item {
+  margin-top: 0.2rem;
+}
+.bill-list-name {
+  min-width: 0;
+  flex: 1;
+}
+.bill-list-name strong {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bill-list-name time {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.66rem;
+}
+.bill-list-name .overdue-text {
+  color: var(--red);
+}
+.bill-list-item > strong {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bill-list-item .row-chevron {
+  width: 0.8rem;
+  color: var(--muted);
+  opacity: 0;
+}
+.bill-list-item:is(:hover, :focus-visible) {
+  background: var(--surface-soft);
+}
+.bill-list-item:is(:hover, :focus-visible) .row-chevron {
+  opacity: 1;
+}
+.bill-status-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.bill-status-group .status {
+  margin: 0;
+}
+.bill-table tbody tr {
+  cursor: pointer;
+}
+.bill-table td {
+  padding-block: 0.85rem;
+}
+.bill-table .vendor-button {
+  min-width: 0;
+}
+.bill-table .vendor-button strong {
+  font-weight: 550;
+}
+.table-search {
+  border-color: var(--border);
+}
+.table-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.table-pagination > div > span:not(.action-tooltip) {
+  min-width: 3rem;
+  text-align: center;
+}
+.settings-stack {
+  max-width: 48rem;
+  gap: 1rem;
+}
+.settings-panel {
+  padding: 1.25rem 1.5rem;
+}
+.settings-panel > .panel-heading {
+  padding: 0 0 1rem;
+  min-height: 3.5rem;
+}
+.settings-panel .detail-list > div:last-child {
+  border: 0;
+  padding-bottom: 0.15rem;
+}
+.settings-panel.logout-panel {
+  display: block;
+}
+.settings-panel.logout-panel > .panel-heading {
+  padding: 0;
+  min-height: 2.5rem;
+}
+.reserved-settings {
+  flex-wrap: nowrap;
+}
+.reserved-settings > .action-tooltip {
+  margin-left: auto;
+}
+.reserved-settings:last-child {
+  padding-bottom: 0;
+}
+.detail-list .detail-note {
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-block: 1.2rem;
+}
+.detail-note dd {
+  text-align: start;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+.modal {
+  border-radius: 1.2rem;
+}
+.modal .bill-list {
+  padding: 0;
+  max-height: 55dvh;
+  overflow-y: auto;
+}
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.password-field input {
+  margin: 0 !important;
+  padding-right: 3rem;
+}
+.password-field > .action-tooltip {
+  position: absolute;
+  right: 0.3rem;
+}
+.password-field .icon-button {
+  min-height: 2.2rem;
+  min-width: 2.2rem;
+}
+.auth-content h2 {
+  margin: 0 0 1.75rem;
+  font-size: 1.75rem;
+}
+.auth-story h1 {
+  margin-top: 0;
+  max-width: 12ch;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.4;
+}
+.auth-content .demo-entry {
+  margin-top: 1.25rem;
+}
+.auth-switch {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.auth-story .art-card {
+  padding: 2rem;
+}
+.auth-story .art-check {
+  margin: 0;
+}
+.field-counter {
+  opacity: 0;
+}
+label:focus-within .field-counter {
+  opacity: 1;
+}
+.landing-main {
+  padding-bottom: 4rem;
+}
+.landing-hero {
+  padding-top: 2rem;
+}
+.landing-hero h1 {
+  font-size: clamp(3rem, 7vw, 6rem);
+  line-height: 1.2;
+  font-weight: 520;
+  letter-spacing: -0.065em;
+  max-width: 12ch;
+  margin: 0 auto;
+  text-wrap: balance;
+}
+.hero-actions {
+  margin-top: 2.25rem;
+}
+.preview-sample {
+  margin-left: auto;
+}
+.landing-preview {
+  margin-top: 4rem;
+}
+.mini-stats > div {
+  min-height: 6.5rem;
+}
+.public-footer {
+  justify-content: center;
+  border: 0;
+}
+
+@media (max-width: 64rem) {
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .upcoming-panel .bill-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .upcoming-panel .bill-list-item {
+    flex-wrap: wrap;
+  }
+  .upcoming-panel .bill-list-item > strong {
+    width: 100%;
+    padding-left: 2.85rem;
+  }
+}
+@media (max-width: 48rem) {
+  .sidebar {
+    z-index: 40;
+  }
+  .topbar {
+    gap: 0.35rem;
+    padding-inline: 1rem;
+  }
+  .topbar-actions {
+    gap: 0.15rem;
+  }
+  .global-search {
+    display: none;
+  }
+  .main-content {
+    padding-top: 0.75rem;
+  }
+  .page-heading {
+    gap: 0.8rem;
+  }
+  .page-actions {
+    gap: 0.35rem;
+  }
+  .summary-grid {
+    gap: 0.65rem;
+  }
+  .metric-card {
+    padding: 1rem 1rem 1.4rem;
+  }
+  .metric-card > strong {
+    font-size: clamp(1.2rem, 6vw, 1.8rem);
+  }
+  .summary-label {
+    font-size: 0.68rem;
+  }
+  .panel-heading {
+    padding-inline: 1rem;
+  }
+  .upcoming-panel .bill-list {
+    display: block;
+  }
+  .upcoming-panel .bill-list-item {
+    flex-wrap: nowrap;
+  }
+  .upcoming-panel .bill-list-item > strong {
+    width: auto;
+    padding: 0;
+  }
+  .settings-panel {
+    padding: 1rem;
+  }
+  .auth-content .form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .public-actions {
+    gap: 0.6rem;
+  }
+  .landing-hero h1 {
+    font-size: clamp(2.8rem, 12vw, 4rem);
+  }
+}

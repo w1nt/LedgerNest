@@ -1,0 +1,225 @@
+/* 所有动效集中管理，避免引入额外动画依赖或改变真实金额。
+ * 仅动画 opacity/transform，减少布局计算；减少动态效果优先于装饰反馈。 */
+:root {
+  --motion-fast: 160ms;
+  --motion-enter: 360ms;
+  --motion-ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.button,
+.icon-button,
+.metric-card,
+.bill-list-item,
+.brand-mark {
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast),
+    color var(--motion-fast),
+    border-color var(--motion-fast),
+    box-shadow var(--motion-fast);
+}
+.panel,
+.sidebar,
+.topbar,
+.modal,
+.summary-card {
+  transition:
+    background 180ms,
+    border-color 180ms,
+    color 180ms;
+}
+.action-tooltip-label {
+  transition:
+    opacity 120ms,
+    transform 120ms var(--motion-ease),
+    visibility 120ms;
+}
+.icon-button:not(:disabled):active,
+.button:not(:disabled):active {
+  transform: scale(0.94);
+}
+.metric-card:not(:disabled):active {
+  transform: scale(0.985);
+}
+.metric-arrow,
+.row-chevron,
+.field-counter {
+  transition:
+    opacity var(--motion-fast),
+    transform var(--motion-fast);
+}
+.value-reveal {
+  display: inline-block;
+  animation: value-reveal 200ms var(--motion-ease);
+}
+.page-transition,
+.auth-content,
+.landing-hero {
+  animation: surface-enter var(--motion-enter) var(--motion-ease);
+}
+.page-transition > .summary-grid > .metric-card {
+  animation: surface-enter 420ms var(--motion-ease) backwards;
+}
+.summary-grid > .metric-card:nth-of-type(2) {
+  animation-delay: 40ms;
+}
+.summary-grid > .metric-card:nth-of-type(3) {
+  animation-delay: 80ms;
+}
+.summary-grid > .metric-card:nth-of-type(4) {
+  animation-delay: 120ms;
+}
+.modal[open] {
+  animation: dialog-enter 200ms var(--motion-ease);
+}
+.modal[open]::backdrop {
+  animation: veil-enter 200ms var(--motion-ease);
+}
+.modal[open][data-closing="true"] {
+  animation: dialog-exit var(--motion-fast) ease-in forwards;
+}
+.modal[open][data-closing="true"]::backdrop {
+  animation: veil-exit var(--motion-fast) ease-in forwards;
+}
+.chart-bar rect:not(.chart-hit-area) {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: bar-enter 550ms var(--motion-ease) backwards;
+  transition: opacity var(--motion-fast);
+}
+.chart-bar:nth-last-child(2n) rect:not(.chart-hit-area) {
+  animation-delay: 50ms;
+}
+.chart-bar:is(:hover, :focus-visible) .chart-total {
+  fill: var(--accent-soft);
+}
+.chart-bar:is(:hover, :focus-visible) .chart-paid {
+  opacity: 0.75;
+}
+.chart-bar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.dropdown-trigger > .icon {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.dropdown-menu {
+  animation: surface-enter 140ms var(--motion-ease);
+}
+.data-tooltip {
+  animation: value-reveal 120ms var(--motion-ease);
+}
+.mini-bars > i {
+  transform-origin: bottom;
+  animation: bar-enter 650ms var(--motion-ease) backwards;
+}
+.mini-bars > i:nth-child(2n) {
+  animation-delay: 80ms;
+}
+.mini-bars > i:nth-child(3n) {
+  animation-delay: 160ms;
+}
+.icon-button[aria-busy="true"] > .icon {
+  animation: spin 0.8s linear infinite;
+}
+.bill-table tbody tr {
+  transition: background var(--motion-fast);
+}
+.landing-preview {
+  transition:
+    transform 350ms var(--motion-ease),
+    box-shadow 350ms;
+}
+@media (hover: hover) {
+  .metric-card:hover {
+    transform: translateY(-0.2rem);
+    box-shadow: var(--shadow);
+    border-color: var(--muted);
+  }
+  .metric-card:hover .metric-arrow {
+    transform: translateX(0.15rem);
+  }
+  .bill-list-item:hover .row-chevron {
+    transform: translateX(0.15rem);
+  }
+  .brand:hover .brand-mark {
+    transform: rotate(-6deg);
+  }
+  .landing-preview:hover {
+    transform: perspective(100rem) rotateX(0) translateY(-0.25rem);
+    box-shadow: 0 1.5rem 4rem #00000012;
+  }
+}
+@keyframes surface-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes value-reveal {
+  from {
+    opacity: 0.35;
+    transform: translateY(0.15rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes dialog-exit {
+  to {
+    opacity: 0;
+    transform: translateY(0.45rem) scale(0.98);
+  }
+}
+@keyframes veil-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes veil-exit {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes bar-enter {
+  from {
+    transform: scaleY(0.01);
+    opacity: 0.2;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .metric-card:hover,
+  .landing-preview,
+  .landing-preview:hover,
+  .brand:hover .brand-mark {
+    transform: none;
+  }
+}
