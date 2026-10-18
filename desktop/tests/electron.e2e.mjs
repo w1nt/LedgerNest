@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { _electron as electron } from "playwright";
 import {
   mkdtemp,
+  mkdir,
   rm,
   copyFile,
   writeFile,
@@ -56,7 +57,7 @@ if (source) {
 }
 const env = {
   ...process.env,
-  LEDGERNEST_E2E: "1",
+  LEDGERNEST_TEST_AUTH_FIRST_CANCEL: "1",
   LEDGERNEST_DB_PATH: dbPath,
   LEDGERNEST_TEST_PROFILE: resolve(dir, "profile"),
   TZ: "America/Los_Angeles",
@@ -67,7 +68,7 @@ const errors = [],
   requests = [];
 try {
   app = await electron.launch({
-    args: ["."],
+    args: [resolve(".local-tools/device-auth-tests/main.cjs")],
     cwd: process.cwd(),
     env,
     timeout: 30000,
@@ -80,15 +81,20 @@ try {
   });
   await page.waitForFunction(() => !!window.ledgernest);
   console.log("Electron window and preload ready.");
-  const cipherFile = await readFile(dbPath);
-  assert.notEqual(cipherFile.subarray(0, 16).toString(), "SQLite format 3\0");
-  assert.ok(!cipherFile.includes(Buffer.from("example@example.com")));
-  assert.ok((await readFile(dbPath + ".key")).length > 32);
+  const beforeUnlock = await readFile(dbPath);
+  assert.equal(
+    await stat(dbPath + ".lock").then(
+      () => true,
+      () => false,
+    ),
+    false,
+  );
   const sandbox = await page.evaluate(() => ({
     node: typeof window.require,
     process: typeof window.process,
     methods: Object.keys(window.ledgernest).sort(),
   }));
+  sandbox.methods.sort();
   assert.deepEqual(sandbox, {
     node: "undefined",
     process: "undefined",
@@ -96,10 +102,11 @@ try {
       "billPage",
       "createBill",
       "currentUser",
-      "login",
+      "deviceStatus",
       "logout",
-      "register",
-    ],
+      "onLocked",
+      "unlock",
+    ].sort(),
   });
   const security = await app.evaluate(({ BrowserWindow }) => {
     const win = BrowserWindow.getAllWindows()[0];
@@ -151,12 +158,64 @@ try {
   );
 
   await page.goto("ledgernest://app/login");
-  await page.locator("input[type=email]").fill("example@example.com");
-  await page.locator("input[autocomplete=current-password]").fill("example123");
-  await page
-    .locator("form button[type=submit],form button.button.primary")
-    .click();
-  await page.waitForURL("**/home/homepage");
+  assert.equal(
+    await page.locator("input[type=password], input[type=email]").count(),
+    0,
+  );
+  // Screenshot the actual React screen. All fixtures and the verification provider are isolated from production.
+  await mkdir(".local-tools/ui-check", { recursive: true });
+  if ((await page.locator(".unlock-language").innerText()).trim() === "中文")
+    await page.locator(".unlock-language").click();
+  await page.getByRole("heading", { name: "欢迎回来。" }).waitFor();
+  await page.locator(".theme-control button").nth(0).click();
+  await page.screenshot({
+    path: ".local-tools/ui-check/unlock-zh-light.png",
+    fullPage: true,
+  });
+  await page.locator(".theme-control button").nth(1).click();
+  await page.screenshot({
+    path: ".local-tools/ui-check/unlock-zh-dark.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+    true,
+  );
+  await page.screenshot({
+    path: ".local-tools/ui-check/unlock-compact.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 850 });
+  await page.locator(".theme-control button").nth(0).click();
+  await page.locator(".unlock-language").click();
+  await page.getByRole("heading", { name: "Welcome back." }).waitFor();
+  await page.screenshot({
+    path: ".local-tools/ui-check/unlock-en-light.png",
+    fullPage: true,
+  });
+  await page.getByTestId("device-unlock").click();
+  await page.getByRole("alert").waitFor();
+  assert.deepEqual(await readFile(dbPath), beforeUnlock);
+  assert.equal(
+    await stat(dbPath + ".lock").then(
+      () => true,
+      () => false,
+    ),
+    false,
+  );
+  assert.equal(
+    (await page.evaluate(() => window.ledgernest.currentUser())).error.status,
+    401,
+  );
+  await page.getByTestId("device-unlock").click();
+  await page.waitForURL((url) => url.pathname.startsWith("/home/"));
+  const cipherFile = await readFile(dbPath);
+  assert.notEqual(cipherFile.subarray(0, 16).toString(), "SQLite format 3\0");
+  assert.ok(!cipherFile.includes(Buffer.from("example@example.com")));
+  assert.ok((await readFile(dbPath + ".key")).length > 32);
   const initial = await page.evaluate(() =>
     window.ledgernest.billPage({ page: 1 }),
   );
@@ -254,14 +313,39 @@ try {
   );
   assert.equal(saved.amount, "12.34");
   assert.equal(saved.settlementStatus, "unpaid");
-  assert.equal(
-    (await page.evaluate(() => window.ledgernest.logout())).ok,
-    true,
-  );
+  await page.goto("ledgernest://app/home/settings");
+  await page.locator(".logout-panel button").click();
+  await page.waitForURL((url) => ["/", "/login"].includes(url.pathname));
   assert.equal(
     (await page.evaluate(() => window.ledgernest.currentUser())).error.status,
     401,
   );
+  await page.waitForURL((url) => ["/", "/login"].includes(url.pathname));
+  assert.equal(
+    await stat(dbPath + ".lock").then(
+      () => true,
+      () => false,
+    ),
+    false,
+  );
+  assert.equal(
+    (await page.evaluate(() => window.ledgernest.billPage({ page: 1 }))).error
+      .status,
+    401,
+  );
+  await page.getByTestId("device-unlock").click();
+  await page.waitForURL((url) => url.pathname.startsWith("/home/"));
+  await app.evaluate(({ powerMonitor }) => powerMonitor.emit("lock-screen"));
+  await page.waitForURL("**/login");
+  assert.equal(
+    await stat(dbPath + ".lock").then(
+      () => true,
+      () => false,
+    ),
+    false,
+  );
+  await page.getByTestId("device-unlock").click();
+  await page.waitForURL((url) => url.pathname.startsWith("/home/"));
   assert.deepEqual(errors, []);
   assert.deepEqual(requests, []);
   // Simulate an abrupt process death: the encrypted WAL and OS key must survive without app.quit().
@@ -272,8 +356,13 @@ try {
   await closed;
   app = undefined;
   env.LEDGERNEST_TEST_PROFILE = resolve(dir, "fresh-profile-after-crash");
+  delete env.LEDGERNEST_TEST_AUTH_FIRST_CANCEL;
   // New process reopens the same file; session must not persist, bills must persist.
-  app = await electron.launch({ args: ["."], cwd: process.cwd(), env });
+  app = await electron.launch({
+    args: [resolve(".local-tools/device-auth-tests/main.cjs")],
+    cwd: process.cwd(),
+    env,
+  });
   const restarted = await app.firstWindow();
   await restarted.waitForFunction(() => !!window.ledgernest);
   assert.equal(
@@ -284,10 +373,7 @@ try {
   assert.equal(
     (
       await restarted.evaluate(() =>
-        window.ledgernest.login({
-          email: "example@example.com",
-          password: "example123",
-        }),
+        window.ledgernest.unlock({ locale: "en-US" }),
       )
     ).ok,
     true,
@@ -306,6 +392,8 @@ try {
       formCreate: true,
       restartPersistence: true,
       crashRecovery: true,
+      canceledVerificationPreservesDatabase: true,
+      lockScreenClosesDatabase: true,
       sandbox: true,
       httpRequests: requests.length,
       pageErrors: errors.length,

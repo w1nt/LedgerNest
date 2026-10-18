@@ -16,6 +16,7 @@ import {
   captureError,
   errorMessage,
   onSessionUnauthorized,
+  unlockDevice as requestDeviceUnlock,
 } from "../services/api";
 import { ValidationError } from "../security/validation";
 import { SessionContext } from "./SessionContext";
@@ -51,10 +52,8 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
     saveDemo(false);
     setSessionError(message ? captureError(message) : null);
     setSessionLoading(false);
-    startTransition(() => {
-      setUser(null);
-      setDemo(false);
-    });
+    setUser(null);
+    setDemo(false);
   }, []);
 
   useEffect(
@@ -62,7 +61,9 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
       onSessionUnauthorized(() => {
         // 登录请求的凭据错误不会触发此通知；只在受保护接口的会话失效时撤销身份。
         clearSession(
-          verifiedUser.current ? new ValidationError("session.expired") : "",
+          verifiedUser.current && !logoutRequest.current
+            ? new ValidationError("session.expired")
+            : "",
         );
       }),
     [clearSession],
@@ -156,6 +157,24 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
       setUser(next);
     });
   }
+  async function unlockDevice(locale: "zh-CN" | "en-US", signal?: AbortSignal) {
+    verification.current?.abort();
+    const controller = new AbortController(),
+      attempt = revision.current;
+    verification.current = controller;
+    const cancel = () => controller.abort();
+    signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) controller.abort();
+    try {
+      const next = await requestDeviceUnlock(locale, controller.signal);
+      if (controller.signal.aborted || attempt !== revision.current)
+        return false;
+      signIn(next);
+      return true;
+    } finally {
+      signal?.removeEventListener("abort", cancel);
+    }
+  }
   function startDemo() {
     revision.current++;
     verification.current?.abort();
@@ -177,7 +196,8 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
     logoutRequest.current = (async () => {
       try {
         if (!isDemo) await logout();
-        if (attempt !== revision.current) return false;
+        if (attempt !== revision.current)
+          return verifiedUser.current === null && !savedDemo();
         clearSession();
         return true;
       } catch (error) {
@@ -201,6 +221,7 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
         sessionError,
         revalidateSession,
         signIn,
+        unlockDevice,
         startDemo,
         signOut,
       }}

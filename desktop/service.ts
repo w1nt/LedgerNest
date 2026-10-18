@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { Bill, BillPage, User } from "../shared/desktop.ts";
 import { Store, type Row } from "./database.ts";
 import { AppError } from "./errors.ts";
@@ -45,6 +45,45 @@ export class LocalService {
   constructor(store: Store, clock = Date.now) {
     this.store = store;
     this.clock = clock;
+  }
+  startDeviceSession(owner: string): User {
+    const rows = this.store.all("SELECT * FROM users ORDER BY id LIMIT 2");
+    if (rows.length > 1)
+      throw new AppError(
+        409,
+        "This legacy database contains multiple profiles.",
+        "PROFILE_REQUIRED",
+      );
+    const row =
+      rows[0] ||
+      this.store.transaction(() => {
+        const now = v.now(),
+          email = `local-${randomUUID()}@ledgernest.invalid`;
+        const result = this.store.run(
+          "INSERT INTO users(username,email,password,address,createdAt,updatedAt) VALUES(?,?,'device-auth-only','',?,?)",
+          v.text(owner, 100),
+          email,
+          now,
+          now,
+        );
+        this.store.run(
+          "INSERT INTO user_preferences(userId,theme,updatedAt) VALUES(?,'system',?)",
+          result.lastInsertRowid,
+          now,
+        );
+        return this.store.one(
+          "SELECT * FROM users WHERE id=?",
+          result.lastInsertRowid,
+        )!;
+      });
+    const now = this.clock();
+    this.session = {
+      id: v.integer(row.id),
+      hash: String(row.password),
+      created: now,
+      touched: now,
+    };
+    return safeUser(row);
   }
   private throttle() {
     const now = this.clock();

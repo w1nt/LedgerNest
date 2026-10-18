@@ -1,11 +1,16 @@
 /** Renderer capability contract: no SQL, paths, arbitrary channels or Node handles. */
-import type {
-  Bill,
-  CreateBillRequest,
-  RegisterRequest,
-  User,
-} from "./billing.ts";
-export type { Bill, CreateBillRequest, RegisterRequest, User };
+import type { Bill, CreateBillRequest, User } from "./billing.ts";
+export type { Bill, CreateBillRequest, User };
+export interface DeviceStatus {
+  platform: "windows" | "macos" | "unsupported";
+  availability:
+    | "available"
+    | "not_configured"
+    | "disabled"
+    | "busy"
+    | "unavailable"
+    | "unsupported";
+}
 export interface BillPage {
   items: Bill[];
   page: number;
@@ -15,10 +20,11 @@ export interface BillPage {
 }
 export type Reply<T> =
   | { ok: true; value: T }
-  | { ok: false; error: { status: number; message: string } };
+  | { ok: false; error: { status: number; message: string; code?: string } };
 export interface DesktopBridge {
-  login(value: { email: string; password: string }): Promise<Reply<User>>;
-  register(value: RegisterRequest): Promise<Reply<User>>;
+  deviceStatus(): Promise<Reply<DeviceStatus>>;
+  unlock(value: { locale: "zh-CN" | "en-US" }): Promise<Reply<User>>;
+  onLocked(listener: () => void): () => void;
   currentUser(): Promise<Reply<User>>;
   logout(): Promise<Reply<null>>;
   billPage(value: { page: number }): Promise<Reply<BillPage>>;

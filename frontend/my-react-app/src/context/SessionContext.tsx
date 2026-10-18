@@ -8,6 +8,10 @@ export interface SessionState {
   sessionError: string;
   revalidateSession: () => Promise<void>;
   signIn: (user: User) => void;
+  unlockDevice: (
+    locale: "zh-CN" | "en-US",
+    signal?: AbortSignal,
+  ) => Promise<boolean>;
   startDemo: () => void;
   signOut: () => Promise<boolean>;
 }

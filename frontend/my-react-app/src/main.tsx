@@ -4,6 +4,7 @@ import "./index.css";
 import "./styles/ui.css";
 import "./styles/data-controls.css";
 import "./styles/motion.css";
+import "./styles/unlock.css";
 import RootRouter from "./router/RootRouter.tsx";
 import ThemeProvider from "./context/ThemeProvider.tsx";
 import SessionProvider from "./context/SessionProvider.tsx";

@@ -7,9 +7,11 @@ declare global {
 }
 export class DesktopRequestError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  readonly code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 export function desktopBridge() {
@@ -24,6 +26,10 @@ export async function desktopResult<T>(
   const result = await pending;
   signal?.throwIfAborted();
   if (!result.ok)
-    throw new DesktopRequestError(result.error.status, result.error.message);
+    throw new DesktopRequestError(
+      result.error.status,
+      result.error.message,
+      result.error.code,
+    );
   return result.value;
 }

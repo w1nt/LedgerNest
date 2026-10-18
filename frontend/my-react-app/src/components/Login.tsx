@@ -1,114 +1,245 @@
-import { useI18n } from "../i18n/LanguageContext";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { login, captureError, errorMessage } from "../services/api";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useI18n } from "../i18n/LanguageContext";
 import { useSession } from "../context/SessionContext";
-import AuthLayout from "./layout/AuthLayout";
-import Icon from "./ui/Icon";
+import {
+  getDeviceStatus,
+  captureError,
+  errorMessage,
+  logout,
+} from "../services/api";
+import type { DeviceStatus } from "../../../../shared/desktop";
 import { safeReturnPath } from "../security/validation";
-import PasswordField from "./ui/PasswordField";
-
+import Brand from "./ui/Brand";
+import ThemeControl from "./ui/ThemeControl";
+import Icon from "./ui/Icon";
 export default function Login() {
-  const { t } = useI18n();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [failure, setError] = useState<unknown>(null);
-  const error = failure ? errorMessage(failure) : "";
-  const { signIn, startDemo } = useSession();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const request = useRef<AbortController | null>(null);
-  const submitting = useRef(false);
-  useEffect(() => () => request.current?.abort(), []);
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (submitting.current) return;
+  const { t, locale, setPreference } = useI18n();
+  const { unlockDevice, startDemo } = useSession();
+  const navigate = useNavigate(),
+    location = useLocation();
+  const [status, setStatus] = useState<DeviceStatus | null>(null),
+    [checking, setChecking] = useState(true),
+    [loading, setLoading] = useState(false);
+  const [failure, setFailure] = useState<unknown>(null);
+  const request = useRef<AbortController | null>(null),
+    submitting = useRef(false);
+  useEffect(() => {
+    let active = true;
+    getDeviceStatus()
+      .then((value) => {
+        if (active) setStatus(value);
+      })
+      .catch((error) => {
+        if (active) setFailure(captureError(error));
+      })
+      .finally(() => {
+        if (active) setChecking(false);
+      });
+    return () => {
+      active = false;
+      request.current?.abort();
+      if (submitting.current) void logout().catch(() => {});
+    };
+  }, []);
+  const method =
+    status?.platform === "windows"
+      ? t("device.windows")
+      : status?.platform === "macos"
+        ? t("device.macos")
+        : t("device.method");
+  const available = status?.availability === "available";
+  async function check() {
+    setChecking(true);
+    setFailure(null);
+    try {
+      setStatus(await getDeviceStatus());
+    } catch (error) {
+      setFailure(captureError(error));
+    } finally {
+      setChecking(false);
+    }
+  }
+  async function unlock() {
+    if (submitting.current || !available) return;
     submitting.current = true;
+    setLoading(true);
+    setFailure(null);
     const controller = new AbortController();
     request.current = controller;
-    setError("");
-    setLoading(true);
     try {
-      const user = await login(email, password, controller.signal);
-      if (controller.signal.aborted) return;
-      setPassword("");
-      signIn(user);
-      navigate(safeReturnPath(location.state), { replace: true });
+      if (await unlockDevice(locale, controller.signal))
+        navigate(safeReturnPath(location.state), { replace: true });
     } catch (error) {
-      if (!controller.signal.aborted) setError(captureError(error));
+      if (
+        !controller.signal.aborted &&
+        !(error instanceof DOMException && error.name === "AbortError")
+      )
+        setFailure(captureError(error));
     } finally {
       submitting.current = false;
-      if (!controller.signal.aborted) {
-        setPassword("");
-        setLoading(false);
-      }
+      if (!controller.signal.aborted) setLoading(false);
     }
   }
   return (
-    <AuthLayout>
-      <h2>{t("auth.welcome")}</h2>
-      {location.state?.registered && (
-        <p className="success-message" role="status">
-          {t("auth.registered")}
-        </p>
-      )}
-      <form className="auth-form" onSubmit={submit}>
-        <label>
-          {t("field.email")}
-          <input
-            type="email"
-            autoComplete="username"
-            required
-            maxLength={254}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-          />
-        </label>
-        <PasswordField
-          label={t("field.password")}
-          autoComplete="current-password"
-          required
-          maxLength={128}
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder={t("auth.passwordPlaceholder")}
-        />
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
+    <div className="unlock-page">
+      <header className="unlock-header">
+        <Brand />
+        <div className="unlock-controls">
+          <button
+            className="unlock-language"
+            aria-label={t("device.language")}
+            onClick={() =>
+              setPreference(locale === "zh-CN" ? "en-US" : "zh-CN")
+            }
+          >
+            <Icon name="language" />
+            {locale === "zh-CN" ? "EN" : "中文"}
+          </button>
+          <ThemeControl compact />
+        </div>
+      </header>
+      <main className="unlock-layout">
+        <section className="unlock-story" aria-labelledby="unlock-story-title">
+          <p className="unlock-eyebrow">
+            <span />
+            {t("device.eyebrow")}
           </p>
-        )}
-        <button className="button primary" disabled={loading}>
-          {loading ? (
-            <>
-              <span className="spinner" />
-              {t("auth.signingIn")}
-            </>
-          ) : (
-            <>
-              {t("auth.login")}
-              <Icon name="arrow" />
-            </>
+          <h1 id="unlock-story-title">
+            {t("device.storyFirst")}
+            <br />
+            <span>{t("device.storySecond")}</span>
+          </h1>
+          <p className="unlock-story-copy">{t("device.storyCopy")}</p>
+          <div className="vault-illustration" aria-hidden="true">
+            <div className="vault-ring one" />
+            <div className="vault-ring two" />
+            <div className="vault-illustration-card">
+              <div className="vault-card-top">
+                <span className="vault-card-mark">
+                  <Icon name="lock" />
+                </span>
+                <span className="vault-card-status">
+                  <i />
+                  {t("device.vaultLocked")}
+                </span>
+              </div>
+              <span className="vault-card-label">{t("device.localVault")}</span>
+              <div className="vault-card-lines">
+                <i />
+                <i />
+              </div>
+              <div className="vault-card-bottom">
+                <Icon name="shield" />
+                <span>{t("device.onDevice")}</span>
+              </div>
+            </div>
+            <span className="vault-spark one" />
+            <span className="vault-spark two" />
+          </div>
+          <p className="unlock-privacy">
+            <Icon name="shield" />
+            {t("device.privacy")}
+          </p>
+        </section>
+        <section className="unlock-card" aria-labelledby="unlock-title">
+          <div className="unlock-symbol">
+            <Icon name="fingerprint" />
+          </div>
+          <p className="unlock-card-eyebrow">{t("device.cardEyebrow")}</p>
+          <h2 id="unlock-title">{t("device.title")}</h2>
+          <p className="unlock-description">{t("device.description")}</p>
+          <div className="unlock-method">
+            <span className="unlock-method-icon">
+              <Icon
+                name={status?.platform === "macos" ? "fingerprint" : "monitor"}
+              />
+            </span>
+            <div>
+              <strong>{method}</strong>
+              <span>
+                {checking
+                  ? t("device.checking")
+                  : available
+                    ? t("device.ready")
+                    : t("device.needsAttention")}
+              </span>
+            </div>
+            <span
+              className={`unlock-ready-dot ${available ? "ready" : ""}`}
+              aria-hidden="true"
+            />
+          </div>
+          {!checking && !available && (
+            <p className="unlock-availability" role="status">
+              {status?.availability === "not_configured"
+                ? t("device.notConfigured")
+                : status?.availability === "unsupported"
+                  ? t("device.desktopOnly")
+                  : t("device.unavailable")}
+            </p>
           )}
-        </button>
-      </form>
-      <p className="auth-switch">
-        {t("auth.noAccount")}
-        <Link to="/register">{t("auth.register")}</Link>
-      </p>
-      <button
-        className="button secondary demo-entry"
-        onClick={() => {
-          startDemo();
-          navigate("/home/homepage");
-        }}
-      >
-        {t("demo.start")}
-        <Icon name="arrow" />
-      </button>
-    </AuthLayout>
+          {failure != null && (
+            <p className="unlock-error" role="alert">
+              {errorMessage(failure)}
+            </p>
+          )}
+          <button
+            className="button primary unlock-primary"
+            type="button"
+            data-testid="device-unlock"
+            onClick={() => void unlock()}
+            disabled={checking || loading || !available}
+            aria-busy={loading}
+            aria-describedby="unlock-explanation"
+          >
+            {loading ? (
+              <>
+                <span className="spinner" />
+                {t("device.verifying")}
+              </>
+            ) : (
+              <>
+                {t("device.unlock")}
+                <Icon name="arrow" />
+              </>
+            )}
+          </button>
+          {!available && (
+            <button
+              className="unlock-recheck"
+              type="button"
+              disabled={checking}
+              onClick={() => void check()}
+            >
+              <Icon name="refresh" />
+              {t("device.checkAgain")}
+            </button>
+          )}
+          <p className="unlock-explanation" id="unlock-explanation">
+            <Icon name="lock" />
+            {t("device.explanation")}
+          </p>
+          <div className="unlock-demo">
+            <span>{t("device.demoLead")}</span>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => {
+                startDemo();
+                navigate("/home/homepage");
+              }}
+            >
+              {t("device.demo")}
+              <Icon name="arrow" />
+            </button>
+          </div>
+        </section>
+      </main>
+      <footer className="unlock-footer">
+        <span>© {new Date().getFullYear()} LedgerNest</span>
+        <span>{t("device.footer")}</span>
+      </footer>
+    </div>
   );
 }

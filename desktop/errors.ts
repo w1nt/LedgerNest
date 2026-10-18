@@ -1,9 +1,11 @@
 import type { Reply } from "../shared/desktop.ts";
 export class AppError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  readonly code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 export async function reply<T>(
@@ -15,7 +17,11 @@ export async function reply<T>(
     if (error instanceof AppError)
       return {
         ok: false,
-        error: { status: error.status, message: error.message },
+        error: {
+          status: error.status,
+          message: error.message,
+          ...(error.code ? { code: error.code } : {}),
+        },
       };
     // Never serialize database paths, SQL, passwords, stack traces or request payloads.
     return {

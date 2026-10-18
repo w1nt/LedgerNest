@@ -1,5 +1,6 @@
 /** Explicit synthetic fixture utility, never run automatically by the application. */
 import { createHash, randomUUID } from "node:crypto";
+import { AppError } from "./errors.ts";
 import { LocalService } from "./service.ts";
 import { Store } from "./database.ts";
 import { now as utcNow } from "./validation.ts";
@@ -8,7 +9,17 @@ export async function seedExample(store: Store, date = new Date()) {
   const email = "example@example.com",
     password = "example123",
     marker = "[example-seed:v1]";
-  if (!store.one("SELECT id FROM users WHERE email=?", email))
+  const profiles = store.all("SELECT email FROM users LIMIT 2");
+  if (
+    profiles.length > 1 ||
+    (profiles.length === 1 && profiles[0].email !== email)
+  )
+    throw new AppError(
+      409,
+      "Seed only an empty vault or the existing example profile.",
+      "PROFILE_REQUIRED",
+    );
+  if (!profiles.length)
     await service.register({
       username: "example",
       email,

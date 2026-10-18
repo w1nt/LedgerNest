@@ -2,6 +2,16 @@
 
 当前版本为 `0.1.0-SNAPSHOT`，由根目录 `VERSION` 和 `scripts/sync-version.mjs` 管理。目录名与 Java 包名暂沿用原型，以控制迁移范围。
 
+## 系统身份验证 — 2026-10-18
+
+**本机验收限制：** 重建后的未签名 Windows 验证 helper 被系统 Code Integrity 策略阻止，正式可用性检查当前返回 unavailable，不能把替身测试通过视为真实 Windows Hello 已跑通。需要已有可信代码签名证书/允许的签名构建后再人工验证；当前未配置证书。构建支持 LEDGERNEST_WINDOWS_SIGNING_THUMBPRINT，不创建证书、不改系统信任或策略；该可选签名分支尚未实测。详见根 README。
+
+正式桌面入口已使用 Windows Hello / macOS LocalAuthentication 取代账号密码登录。device-auth 封装受限原生 helper，DeviceSession 在验证成功前不创建/打开数据库或解包密钥；取消/失败保持关闭，无密码或测试环境变量降级。锁屏/休眠/切换用户、10 分钟应用无受保护访问或 OS 空闲、8 小时上限触发锁定、关闭句柄与前端通知；验证竞态和迟到结果被拒绝。
+
+桌面 IPC 删除 login/register，新增设备状态、解锁和锁定通知，账单接口保留。原单用户/ID/哈希/32 笔账单直接采用；新空库创建本地档案，多个旧档案拒绝自动选择。seed 工具拒绝向已有其他档案的库增加第二个 example 用户。旧密码方法只留在迁移/fixture/业务回归内部，不再是桌面入口。
+
+存储 CLI 同样先进行系统验证。测试替身只在独立临时测试执行入口构建；生产始终使用原生 helper。Windows 较早原生探测曾通过，最终未签名构建被 Code Integrity 阻止；真实 Hello 验证需先解决可信签名再人工完成，macOS 构建与 LocalAuthentication/Keychain 要在 Mac 验证。用户自选云备份和快速跨设备恢复留待后续设计，当前不开发在线服务或新备份 UI。
+
 ## 本地存储加密 — 2026-10-18
 
 桌面持久化已从 node:sqlite 换用 better-sqlite3-multiple-ciphers / SQLite3MultipleCiphers，采用 AES-256 页加密和 SHA-512 HMAC。随机数据库密钥由 Windows CurrentUser DPAPI 或 macOS/Linux safeStorage 保护；Linux basic_text 降级被拒绝。渲染进程不接触密钥，密钥不进入 SQL、环境变量、命令行或日志。
@@ -14,7 +24,7 @@
 
 ## Electron 替代进度 — 2026-10-18
 
-日常桌面启动已改为仓库根目录 npm start，不需要本目录的 Java 进程。desktop/ 下的 TypeScript 本机业务层通过受限 IPC 提供注册、登录、当前用户、退出、账单分页及新增；使用 Node 内置 SQLite，兼容当前十表结构、整数分、UTC 时间和 PBKDF2 密码哈希。现有 React 账单、概览和趋势图已接通本地数据。
+日常桌面启动已改为仓库根目录 npm start，不需要本目录的 Java 进程。desktop/ 下的 TypeScript 本机业务层通过受限 IPC 提供系统验证、当前档案、锁定、账单分页及新增；使用 SQLite3MultipleCiphers，兼容当前十表结构、整数分、UTC 时间和 PBKDF2 密码哈希。现有 React 账单、概览和趋势图已接通本地数据。
 
 本目录保留为迁移对照：资料/密码修改、偏好接口、账单编辑/删除、独立汇总/提醒及结算操作尚未移植到桌面接口，不应视为全量迁移完成。不增加支付执行；新业务在 desktop/ 开发。数据库文件沿用根目录 data/ledgernest.sqlite，桌面测试使用隔离文件；不要同时运行两套写入程序。桌面 schema 在 database/schema.sql，测试核对与本目录 schema 一致。
 

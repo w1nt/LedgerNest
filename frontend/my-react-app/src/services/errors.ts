@@ -16,6 +16,18 @@ export function captureError(error: unknown): ValidationError | BackendFailure {
   if (error instanceof ValidationError || error instanceof BackendFailure)
     return error;
   if (error instanceof DesktopRequestError) {
+    const keys = {
+      AUTH_CANCELED: "device.errorCanceled",
+      AUTH_DENIED: "device.errorDenied",
+      AUTH_BUSY: "device.errorBusy",
+      AUTH_NOT_CONFIGURED: "device.notConfigured",
+      AUTH_UNAVAILABLE: "device.unavailable",
+      AUTH_DESKTOP_REQUIRED: "device.desktopOnly",
+      PROFILE_REQUIRED: "device.multipleProfiles",
+    } as const;
+    if (error.code && Object.hasOwn(keys, error.code))
+      return new ValidationError(keys[error.code as keyof typeof keys]);
+
     if (error.status >= 500) return new ValidationError("api.unavailable");
     if (error.status === 429) return new ValidationError("api.rateLimit");
     return new BackendFailure(error.status, error.message);

@@ -25,8 +25,15 @@ export type IconName =
   | "eye"
   | "eye-off"
   | "language"
-  | "user";
+  | "user"
+  | "lock"
+  | "shield"
+  | "fingerprint";
 const paths: Record<IconName, string> = {
+  lock:"M7 10V7a5 5 0 0 1 10 0v3 M5 10h14v11H5z M12 14v3",
+  shield:"M12 2l8 4v6c0 5-8 10-8 10s-8-5-8-10V6z M8 12l3 3 5-6",
+  fingerprint:"M8 10a4 4 0 0 1 8 0v4 M5 11v-1a7 7 0 0 1 14 0v3 M12 9v5c0 4-2 6-3 8 M8 14c0 3-1 5-3 6 M16 17c0 2-1 4-2 5 M3 14v1 M20 16l-1 4",
+
   language:
     "M3 5h12 M9 3v2 M6 5c0 6 3 9 7 11 M12 5c0 6-4 10-9 12 M14 21l4-11 4 11 M16 17h4",
   user: "M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 21v-2a8 8 0 0 1 16 0v2",

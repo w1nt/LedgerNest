@@ -16,8 +16,6 @@ import BillsPage from "../components/home/BillsPage";
 import Settings from "../components/home/Settings";
 import CreateBillPage from "../components/home/CreateBillPage";
 import Login from "../components/Login";
-import Register from "../components/Register";
-import LandingPage from "../components/LandingPage";
 
 function SessionRevalidation() {
   const { pathname } = useLocation();
@@ -35,7 +33,7 @@ export default function RootRouter() {
     <BrowserRouter>
       <SessionRevalidation />
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<PublicOnly><Login /></PublicOnly>} />
         <Route
           path="/login"
           element={
@@ -48,7 +46,7 @@ export default function RootRouter() {
           path="/register"
           element={
             <PublicOnly>
-              <Register />
+              <Navigate to="/login" replace />
             </PublicOnly>
           }
         />

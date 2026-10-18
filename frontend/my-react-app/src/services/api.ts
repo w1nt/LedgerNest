@@ -63,8 +63,10 @@ const http = window.location.protocol === "ledgernest:" ? null : createHttp();
 const unauthorizedListeners = new Set<() => void>();
 export function onSessionUnauthorized(listener: () => void) {
   unauthorizedListeners.add(listener);
+  const detach = desktopBridge()?.onLocked(listener);
   return () => {
     unauthorizedListeners.delete(listener);
+    detach?.();
   };
 }
 http?.interceptors.response.use(
@@ -114,15 +116,10 @@ export async function login(
 ) {
   signal?.throwIfAborted();
   if (desktopBridge())
-    return parseUser(
-      await local(
-        desktopBridge()!.login({
-          email: email(value),
-          password: password(secret),
-        }),
-        signal,
-        false,
-      ),
+    throw new DesktopRequestError(
+      403,
+      "Use device unlock.",
+      "AUTH_DESKTOP_REQUIRED",
     );
   const { data } = await http!.post<unknown>(
     "/login",
@@ -133,16 +130,12 @@ export async function login(
 }
 export async function register(value: RegisterRequest, signal?: AbortSignal) {
   signal?.throwIfAborted();
-  if (desktopBridge()) {
-    parseUser(
-      await local(
-        desktopBridge()!.register(registerRequest(value)),
-        signal,
-        false,
-      ),
+  if (desktopBridge())
+    throw new DesktopRequestError(
+      403,
+      "Use device unlock.",
+      "AUTH_DESKTOP_REQUIRED",
     );
-    return;
-  }
   // 显式挑选字段，禁止额外身份、状态、角色等字段经对象展开进入请求。
   const response = await http!.post<unknown>(
     "/register",
@@ -226,3 +219,25 @@ export async function createBill(
 }
 
 export { captureError, errorMessage } from "./errors";
+
+export async function getDeviceStatus(): Promise<
+  import("../../../../shared/desktop").DeviceStatus
+> {
+  const bridge = desktopBridge();
+  if (!bridge) return { platform: "unsupported", availability: "unsupported" };
+  return await local(bridge.deviceStatus(), undefined, false);
+}
+export async function unlockDevice(
+  locale: "zh-CN" | "en-US",
+  signal?: AbortSignal,
+) {
+  signal?.throwIfAborted();
+  const bridge = desktopBridge();
+  if (!bridge)
+    throw new DesktopRequestError(
+      409,
+      "Open the desktop app to unlock local data.",
+      "AUTH_DESKTOP_REQUIRED",
+    );
+  return parseUser(await local(bridge.unlock({ locale }), signal, false));
+}

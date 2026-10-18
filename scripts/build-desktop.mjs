@@ -1,3 +1,4 @@
+import { buildNativeAuth } from "./build-native-auth.mjs";
 import { build } from "esbuild";
 import { copyFile, mkdir } from "node:fs/promises";
 await mkdir("desktop/dist", { recursive: true });
@@ -14,4 +15,7 @@ for (const entry of ["main", "preload"]) {
   });
 }
 await copyFile("database/schema.sql", "desktop/dist/schema.sql");
-console.log("Electron main/preload and SQLite schema built.");
+buildNativeAuth();
+console.log(
+  "Electron main/preload, SQLite schema and native device authentication built.",
+);

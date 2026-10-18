@@ -3,8 +3,13 @@ import { channels } from "./boundary.ts";
 import type { DesktopBridge } from "../shared/desktop.ts";
 // One capability per operation. Never expose ipcRenderer, arbitrary invoke or event objects.
 const bridge: DesktopBridge = {
-  login: (value) => ipcRenderer.invoke(channels.login, value),
-  register: (value) => ipcRenderer.invoke(channels.register, value),
+  deviceStatus: () => ipcRenderer.invoke(channels.deviceStatus),
+  unlock: (value) => ipcRenderer.invoke(channels.unlock, value),
+  onLocked: (listener) => {
+    const notify = () => listener();
+    ipcRenderer.on("device:locked", notify);
+    return () => ipcRenderer.removeListener("device:locked", notify);
+  },
   currentUser: () => ipcRenderer.invoke(channels.currentUser),
   logout: () => ipcRenderer.invoke(channels.logout),
   billPage: (value) => ipcRenderer.invoke(channels.billPage, value),

@@ -62,12 +62,12 @@ export default function Settings() {
           <ThemeControl />
         </Panel>
         <Panel
-          title={t("profile.title")}
+          title={t("device.profile")}
           icon="user"
           className="settings-panel"
           actions={
-            <InfoDialog title={t("profile.title")}>
-              <p>{t("settings.editNote")}</p>
+            <InfoDialog title={t("device.profile")}>
+              <p>{t("device.systemProtection")}</p>
             </InfoDialog>
           }
         >
@@ -76,15 +76,8 @@ export default function Settings() {
               <dt>{t("field.username")}</dt>
               <dd>{isDemo ? t("demo.user") : user?.username}</dd>
             </div>
-            <div>
-              <dt>{t("field.email")}</dt>
-              <dd>{isDemo ? t("demo.noAccount") : user?.email}</dd>
-            </div>
-            <div>
-              <dt>{t("field.address")}</dt>
-              <dd>{isDemo ? "—" : user?.address || t("common.notProvided")}</dd>
-            </div>
           </dl>
+          <p className="settings-device-note">{t("device.systemProtection")}</p>
         </Panel>
         <Panel
           title={t("settings.payments")}

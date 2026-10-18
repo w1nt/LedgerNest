@@ -13,12 +13,13 @@
     "start": "npm run build && node scripts/start-desktop.mjs",
     "start:built": "node scripts/start-desktop.mjs",
     "test": "node --test desktop/tests/*.test.mjs",
-    "test:desktop": "npm run build && node desktop/tests/electron.e2e.mjs",
+    "test:desktop": "npm run build && node scripts/build-desktop-tests.mjs && node desktop/tests/electron.e2e.mjs",
     "seed:example": "npm run build:desktop && node scripts/storage.mjs seed",
     "storage:encrypt": "npm run build:desktop && node scripts/storage.mjs encrypt",
     "storage:backup": "npm run build:desktop && node scripts/storage.mjs backup",
     "storage:restore": "npm run build:desktop && node scripts/storage.mjs restore",
-    "test:storage": "npm run build:desktop && node desktop/tests/storage-cli.e2e.mjs"
+    "test:storage": "npm run build:desktop && node scripts/build-desktop-tests.mjs && node desktop/tests/storage-cli.e2e.mjs",
+    "test:native": "npm run build && node scripts/build-desktop-tests.mjs && node desktop/tests/native-availability.e2e.mjs"
   },
   "devDependencies": {
     "@types/node": "24.12.0",

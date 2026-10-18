@@ -10,9 +10,19 @@
 
 AI 是后续可选功能：由用户提供 API，基础功能独立工作；界面应明确告知将发送给第三方服务的数据范围。
 
+## 系统解锁 — 2026-10-18
+
+**本机验收限制：** 重建后的未签名 Windows 验证 helper 被系统 Code Integrity 策略阻止，正式可用性检查当前返回 unavailable，不能把替身测试通过视为真实 Windows Hello 已跑通。需要已有可信代码签名证书/允许的签名构建后再人工验证；当前未配置证书。构建支持 LEDGERNEST_WINDOWS_SIGNING_THUMBPRINT，不创建证书、不改系统信任或策略；该可选签名分支尚未实测。详见根 README。
+
+登录页已重做为本地空间解锁页，不再提供账号密码输入或注册入口。Windows 调用 Windows Hello（系统已配置的 PIN/指纹/人脸），macOS 调用 LocalAuthentication（Touch ID 或 Mac 登录密码）；应用不读取系统密码。界面支持中英文、浅深色主题、紧凑布局、取消/不可用错误及独立内存演示入口。设置与侧栏的退出入口改为“锁定空间”。
+
+数据库在主进程完成系统验证后才打开；取消、拒绝或不可用均保持关闭。锁屏、休眠、切换用户、10 分钟无受保护访问/OS 空闲或 8 小时绝对超时会关闭数据库并通知 React 卸载受保护页面；请求与每 5 秒计时器检查过期。旧单用户档案及原账单保持，新空库在验证后创建本地档案，旧多用户库拒绝自动选择。
+
+现有 example 档案/32 笔数据继续保留，正常桌面操作不再输入 example123。测试执行入口与正式入口分离，没有环境变量跳过正式系统验证的路径。Windows 较早原生探测曾通过，最终未签名构建被 Code Integrity 阻止，当前不可用；自动化使用隔离验证替身覆盖流程，需先解决可信签名再人工确认真实 Windows Hello，macOS 需在 Mac 构建与实测。用户自选云备份/快速跨设备重读仅备案，当前不开发。已有终端便携备份保留，存储命令也先要求系统验证。
+
 ## 数据加密 — 2026-10-18
 
-桌面主进程已启用 SQLite 整库页加密、系统密钥保护、WAL 加密及私有文件权限。现有前端 IPC 方法和展示结构不变，页面不获取数据库密钥；应用登录密码与数据库随机密钥相互独立。旧数据自动验证并迁移，测试账号 example@example.com / example123 与 32 笔账单保留。
+桌面主进程已启用 SQLite 整库页加密、系统密钥保护、WAL 加密及私有文件权限。页面不获取数据库密钥，系统验证结果由主进程处理；历史应用密码与数据库随机密钥相互独立。旧数据自动验证并迁移，测试账号 example@example.com / example123 与 32 笔账单保留。
 
 便携密码备份/恢复目前通过根目录 storage:backup / storage:restore 命令执行，设置页尚无入口；更换电脑或重装系统前应生成便携备份。不能直接用 Java/普通 SQLite 打开当前加密文件。详见根 README。未接入 Plaid/AI。
 
@@ -27,9 +37,9 @@ npm run seed:example
 npm start
 ```
 
-页面和 BrowserRouter 路由保持不变；Electron 从 ledgernest://app 加载构建产物。services/api.ts 在桌面环境调用受限 preload 接口，登录、注册、当前用户、退出、分页账单与新增账单通过 IPC 访问本地 SQLite，不需要 Java、HTTP 或 Vite 服务。图表继续在前端使用整数分汇总。
+账单及设置路由保持，根路径进入解锁页，旧 /register 重定向到 /login；Electron 从 ledgernest://app 加载构建产物。services/api.ts 在桌面环境调用受限 preload 接口，设备检查、解锁、当前档案、锁定、分页账单与新增账单通过 IPC 访问本地 SQLite，不需要 Java、HTTP 或 Vite 服务。图表继续在前端使用整数分汇总。
 
-浏览器 HTTP 适配器仅保留作旧实现回归：先为 Java 配置独立的可丢弃明文数据库，再手动启动后端和本目录 npm run dev；Java 无法打开桌面加密库。当前桌面会话由主进程维护，不使用 Cookie；渲染进程无 Node、SQL、文件路径或任意 IPC 权限。打包分发、首次配置、银行流水及 AI 尚未实现。
+浏览器 npm run dev 可预览解锁界面和内存演示，但系统解锁仅适用于 Electron；共享界面已不再提供旧 HTTP 账号登录。HTTP 适配器/Java 只作直接接口回归参考，需独立可丢弃明文库，不能打开桌面加密库。当前桌面会话由主进程维护，不使用 Cookie；渲染进程无 Node、SQL、文件路径或任意 IPC 权限。打包分发、首次配置、银行流水及 AI 尚未实现。
 
 ```powershell
 npm run build
@@ -55,6 +65,6 @@ npm run test:trends
 ## SQLite 联调 — 2026-10-17
 
 - 后端已迁移到本机 SQLite，前端 API、金额字符串及现有账单/图表接口保持兼容，无需配置 MySQL。
-- 现有本地测试账号与 32 笔预设账单已从旧库保留；邮箱 `example@example.com`，密码 `example123`。通过真实登录使用，不是演示模式。
+- 现有本地测试账号与 32 笔预设账单已从旧库保留；邮箱 `example@example.com`，密码 `example123`。这是保留的历史合成档案；当前通过系统验证打开原数据，不是内存演示模式。
 - 默认数据库为根目录 `data/ledgernest.sqlite`，由 Electron 本机业务层自动初始化；新安装在根目录 npm run seed:example 生成同类合成数据。
 - 此迁移不代表已接入 Plaid 或 AI；银行流水仍需后续独立建模。
