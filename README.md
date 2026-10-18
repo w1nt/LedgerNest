@@ -15,7 +15,7 @@ LedgerNest is a free, open-source project intended to run on your own computer. 
 | Electron main/preload, SQLite and local account sessions | Implemented for the current UI; validated capability-based IPC |
 | User-provided Plaid credentials and Link authorization | Not implemented |
 | Historical transaction imports, incremental syncing, and reconciliation | Not implemented |
-| Embedded local storage | Implemented with SQLite; no database service or database credentials required |
+| Encrypted embedded local storage | Implemented with SQLite3MultipleCiphers, OS-protected keys and passphrase backups |
 | Guided first-run setup, installers and signed distribution | Not implemented |
 | Personalized local rules, budgets, and reminders | Not implemented |
 | User-provided AI API and optional analysis assistant | Future extension |
@@ -64,11 +64,11 @@ In source development the database remains `data/ledgernest.sqlite`, preserving 
 
 Test account after explicitly seeding: **`example@example.com` / `example123`**, username `example`. The seeder creates 32 synthetic bills for the current period and prior months. Repeated runs skip existing fixture names; they never reset an existing password. This is a local prototype account, not an OS login or database encryption key. The separate demo entry still uses in-memory examples.
 
-The SQLite file and its `-wal` / `-shm` sidecars contain local data and are ignored by Git. **Storage is not encrypted automatically.** Keep it private and close every application using the database before making a manual file backup, or use SQLite's backup API. Do not put a live database on a network drive or treat file synchronization as database synchronization.
+The database now encrypts pages automatically. Keys, database files, recovery snapshots and portable backups are ignored by Git. Read the storage section below before copying data to another device. Do not put a live database on a network drive or treat file synchronization as database synchronization.
 
 ### Legacy Browser Preview
 
-The HTTP adapter remains available for regression work with the retained Java backend. To use it, run `backend/SpringBoot_demo/start-local.ps1` and `npm --prefix frontend/my-react-app run dev`, then visit `http://127.0.0.1:5173`. This path requires JDK 17+ and uses the same local database; close it when testing desktop writes. It is not part of normal desktop startup. Desktop account sessions are held in main-process memory rather than HTTP cookies.
+The HTTP adapter remains available for regression work with the retained Java backend. To use it, run `backend/SpringBoot_demo/start-local.ps1` and `npm --prefix frontend/my-react-app run dev`, then visit `http://127.0.0.1:5173`. This path requires JDK 17+ and a separate, disposable plaintext database configured with `LEDGERNEST_DB_PATH`. The retained Java driver cannot open the encrypted desktop database; never point it at the current desktop file. It is not part of normal desktop startup. Desktop account sessions are held in main-process memory rather than HTTP cookies.
 
 ## Development and Validation
 
@@ -84,6 +84,7 @@ node scripts/sync-version.mjs --check
 npm run build
 npm test
 npm run test:desktop
+npm run test:storage
 npm --prefix frontend/my-react-app run lint
 npm --prefix frontend/my-react-app run test:security
 npm --prefix frontend/my-react-app run test:i18n
@@ -92,7 +93,7 @@ npm --prefix frontend/my-react-app run test:trends
 python -m unittest discover -s scripts/tests -v
 ```
 
-Unit tests and the real Electron integration test use temporary databases and profiles. The Electron test keeps windows hidden and verifies login, totals, six chart bars, creation through the UI, restart persistence, isolated renderer capabilities, rejected foreign IPC callers, and absence of HTTP API requests. To verify an existing example database without modifying it, set `LEDGERNEST_VERIFY_SOURCE=data/ledgernest.sqlite` for `npm run test:desktop`; SQLite's backup API creates an isolated test copy. This fixture-specific check expects the original 32 examples and October 2026 summary.
+Unit tests and the real Electron integration test use temporary databases and profiles. The Electron test keeps windows hidden and verifies login, totals, six chart bars, creation through the UI, restart persistence, isolated renderer capabilities, rejected foreign IPC callers, abrupt-exit recovery with a fresh Chromium profile, and absence of HTTP API requests. To verify an existing example database without modifying it, set `LEDGERNEST_VERIFY_SOURCE=data/ledgernest.sqlite` for `npm run test:desktop`; the closed encrypted database and its OS-protected key file are copied to an isolated test directory. Close every app using the source first; a live lock or nonempty WAL causes this check to refuse the copy. This fixture-specific check expects the original 32 examples and October 2026 summary.
 
 Desktop requests follow **React → restricted preload bridge → validated main-frame IPC → local business service → SQLite**. The bridge exposes only login, registration, current user, logout, paginated bills and bill creation. Renderer code has no Node integration, SQL, file paths, secrets or arbitrary IPC access. The sandbox, context isolation, restrictive CSP, custom application protocol, navigation checks, parameterized SQL, integer cents, transactional idempotency and bounded password hashing apply to this first desktop workflow. Main-process sessions expire after 30 minutes idle or 8 hours absolute and end when the app closes. Database contents remain accessible to the OS user; these controls do not replace disk encryption.
 
@@ -100,11 +101,47 @@ Profile/password editing, preference APIs, bill editing/deletion and standalone 
 
 All components share the root `VERSION`; future development belongs to this repository. Its history is independent of the private prototype repository. Existing frontend and backend development logs remain local and are excluded by `.gitignore`. Public updates belong in README files. API credentials, local databases, backups and build artifacts must not be committed.
 
+## Local Storage Security and Encrypted Backups
+
+Persistent desktop storage uses `better-sqlite3-multiple-ciphers` 13.0.3 and SQLite3MultipleCiphers' modern `sqlcipher` mode (`legacy=0`): AES-256 page encryption, SHA-512 page HMAC verification, a random 256-bit database secret, and PBKDF2 with 256,000 iterations. Keys are applied through the native binary API rather than SQL literals. The schema remains v1. Use LedgerNest tooling for this cipher format.
+
+`data/ledgernest.sqlite.key` holds an **OS-protected wrapper**, not the clear database key. Windows uses CurrentUser DPAPI directly through a hidden system PowerShell helper, independent of Chromium's Local State file. macOS/Linux use Electron safeStorage; Linux's `basic_text`/unavailable key-store fallback is rejected. No key is supplied by the renderer, a `VITE_` variable, environment variable or command-line argument. An existing encrypted database with a missing, wrong or corrupt key is never silently reset or given a replacement key.
+
+Database/key/recovery files receive a current-user-only Windows DACL, or mode 0600 on POSIX; newly created storage directories use private permissions. WAL page contents are encrypted. Shared-memory sidecars carry SQLite coordination metadata and receive access restrictions. Temporary SQL data is held in memory; foreign keys, strict tables, secure deletion, disabled trusted schema/mmap, FULL synchronization, application file locks and transactional idempotency remain enabled. OS administrators and software acting as the unlocked OS user are outside this protection boundary; live plaintext in application memory is not encrypted by this feature.
+
+Existing valid plaintext LedgerNest databases migrate automatically at startup, or explicitly with:
+
+```powershell
+npm run storage:encrypt
+```
+
+Migration validates the old schema, blocks competing writers, copies and compares all ten tables and sequence counters into a new database that is encrypted before its first write, and verifies integrity before publication. An encrypted `ledgernest.sqlite.migration-<id>.sqlite` recovery snapshot is retained next to the original path. It uses the same wrapped key. The original path is replaced only after verification; unknown databases are refused. Existing accounts, password hashes, bill IDs, timestamps and amounts are retained. Old external exports, OS snapshots or previously deleted plaintext blocks are not erased by this migration.
+
+Close the application before running storage commands. To make a **portable backup**, choose a new output path:
+
+```powershell
+npm run storage:backup -- "FULL_PATH_TO_NEW_FILE.lnbackup"
+```
+
+The terminal asks for and confirms a 12–256 character passphrase with input hidden. It is sent to the hidden storage process over stdin only. Each backup has a fresh database key, wrapped with scrypt (`N=131072, r=8, p=1`) and AES-256-GCM. The authenticated envelope also binds a SHA-256 digest of the encrypted SQLite payload. Staging snapshots are encrypted from their first write; normal completion and failures clean up temporary backup files. Existing destinations are never overwritten. Backup format v1 supports files up to 512 MiB and needs roughly 128 MiB of working memory for scrypt.
+
+To restore onto another device/OS account, use a **new database path**:
+
+```powershell
+npm run storage:restore -- "FULL_PATH_TO_BACKUP.lnbackup" "FULL_PATH_TO_NEW_DATABASE.sqlite"
+```
+
+Restore authenticates the passphrase and payload, verifies the SQLite schema/integrity, and wraps the restored key with the destination OS account before publishing the new database. Wrong passwords, damaged files and existing destinations are rejected. Set `LEDGERNEST_DB_PATH` to the restored file before starting the app. The backup does not contain the original machine's OS-key wrapper.
+
+Moving the database and `.key` together within the same OS account preserves access; ordinary copies of this pair are not a portable recovery method. Keep a passphrase backup before reinstalling the OS or changing devices. A forgotten backup passphrase or lost OS key without a portable backup cannot be recovered by the project author. The local example login password is separate from storage encryption. Backup/restore currently use the terminal; Settings controls and key-rotation UI are later work. Windows is tested here; macOS signing/keychain and Linux keyring integration still need platform validation.
+
+Implementation references: [SQLite3MultipleCiphers cipher settings](https://utelle.github.io/SQLite3MultipleCiphers/docs/ciphers/cipher_sqlcipher/), [Windows DPAPI](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata), [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage).
+
 ## SQLite Migration and Test Account
 
 The SQLite schema uses strict tables, foreign keys on every connection, WAL, and IMMEDIATE transactions. Monetary values are stored as **integer USD cents**; API amounts remain decimal strings. UTC timestamps are fixed-width text. This retains the existing bill API and does not implement bank syncing or payments.
 
-The test account and fixtures are created by `npm run seed:example` without starting Java or Electron. No sample database or real account data is shipped in Git.
+The test account and fixtures are created by `npm run seed:example` using a hidden Electron storage tool with the same OS key protection as the app. No Java, HTTP server or desktop window is required. No sample database or real account data is shipped in Git.
 
 For an existing legacy MySQL database, the optional one-time importer requires Python 3.10+ (SQLite 3.37+) and the MySQL CLI:
 
@@ -113,7 +150,7 @@ For an existing legacy MySQL database, the optional one-time importer requires P
 python scripts/migrate-mysql-to-sqlite.py --user YOUR_READ_USER --database YOUR_DATABASE --output data/imported.sqlite
 ```
 
-The importer uses a read-only consistent snapshot, preserves IDs/password hashes/timestamps, converts money without rounding, and verifies every row plus foreign keys and integrity. It refuses to overwrite an existing destination. Stop the application and set `LEDGERNEST_DB_PATH` to the imported file before starting it. Clear `MYSQL_PWD` from the terminal when finished. This importer is optional; MySQL is not a runtime dependency.
+The legacy importer produces a plaintext SQLite file; keep it in a private directory and run the desktop encryption migration against that path before normal use. It does not produce a portable encrypted backup. The importer uses a read-only consistent snapshot, preserves IDs/password hashes/timestamps, converts money without rounding, and verifies every row plus foreign keys and integrity. It refuses to overwrite an existing destination. Stop the application and set `LEDGERNEST_DB_PATH` to the imported file before starting it. Clear `MYSQL_PWD` from the terminal when finished. This importer is optional; MySQL is not a runtime dependency.
 
 ## License
 

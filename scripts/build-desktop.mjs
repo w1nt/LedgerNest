@@ -9,7 +9,7 @@ for (const entry of ["main", "preload"]) {
     platform: "node",
     format: "cjs",
     target: "node24",
-    external: ["electron"],
+    external: ["electron", "better-sqlite3-multiple-ciphers"],
     sourcemap: false,
   });
 }

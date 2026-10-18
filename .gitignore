@@ -45,3 +45,11 @@ Thumbs.db
 # Python migration-tool caches
 __pycache__/
 *.py[cod]
+
+# Encrypted database recovery material and interrupted storage operations
+*.lnbackup*
+*.sqlite.key
+*.sqlite.lock/
+*.sqlite.encrypting-*
+*.db.lock/
+*.sqlite3.lock/

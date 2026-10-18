@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, readFileSync } from "node:fs";
@@ -34,14 +35,15 @@ const fails = (fn, status) =>
 async function fixture(fn) {
   const dir = mkdtempSync(resolve(tmpdir(), "ledgernest-unit-"));
   const path = resolve(dir, "test.sqlite");
-  let store = new Store(path, schema);
+  const storageKey = randomBytes(32);
+  let store = new Store(path, schema, storageKey);
   try {
     await fn({
       store,
       path,
       reopen() {
         store.close();
-        store = new Store(path, schema);
+        store = new Store(path, schema, storageKey);
         return store;
       },
     });
@@ -66,7 +68,7 @@ test("schema matches legacy reference and unknown databases are not initialized"
   );
   db.close();
   const before = readFileSync(path);
-  assert.throws(() => new Store(path, schema), /Unsupported/);
+  assert.throws(() => new Store(path, schema, randomBytes(32)), /Plaintext/);
   assert.deepEqual(readFileSync(path), before);
   rmSync(dir, { recursive: true, force: true });
 });

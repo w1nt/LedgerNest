@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { _electron as electron } from "playwright";
-import { mkdtemp, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  rm,
+  copyFile,
+  writeFile,
+  readFile,
+  stat,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { DatabaseSync, backup } from "node:sqlite";
@@ -10,16 +17,39 @@ const dir = await mkdtemp(resolve(tmpdir(), "ledgernest-electron-"));
 const dbPath = resolve(dir, "test.sqlite");
 const source = process.env.LEDGERNEST_VERIFY_SOURCE;
 if (source) {
-  const db = new DatabaseSync(resolve(source), { readOnly: true });
-  try {
-    await backup(db, dbPath);
-  } finally {
-    db.close();
+  const header = (await readFile(resolve(source))).subarray(0, 16).toString();
+  if (header === "SQLite format 3\0") {
+    const db = new DatabaseSync(resolve(source), { readOnly: true });
+    try {
+      await backup(db, dbPath);
+    } finally {
+      db.close();
+    }
+  } else {
+    // Encrypted source verification requires a closed app and a checkpointed file.
+    if (
+      await stat(resolve(source) + ".lock").then(
+        () => true,
+        () => false,
+      )
+    )
+      throw new Error("Close the source database first.");
+    if (
+      await stat(resolve(source) + "-wal").then(
+        (s) => s.size > 0,
+        () => false,
+      )
+    )
+      throw new Error("Checkpoint the source database first.");
+    await copyFile(resolve(source), dbPath);
+    await copyFile(resolve(source) + ".key", dbPath + ".key");
   }
 } else {
-  const store = new Store(dbPath, resolve("database/schema.sql"));
+  // Deliberately plain LEGACY fixture, isolated under temp: exercise the actual encrypted migration.
+  const store = new Store(":memory:", resolve("database/schema.sql"));
   try {
     await seedExample(store, new Date(2026, 9, 18));
+    await writeFile(dbPath, store.db.serialize(), { mode: 0o600 });
   } finally {
     store.close();
   }
@@ -50,6 +80,10 @@ try {
   });
   await page.waitForFunction(() => !!window.ledgernest);
   console.log("Electron window and preload ready.");
+  const cipherFile = await readFile(dbPath);
+  assert.notEqual(cipherFile.subarray(0, 16).toString(), "SQLite format 3\0");
+  assert.ok(!cipherFile.includes(Buffer.from("example@example.com")));
+  assert.ok((await readFile(dbPath + ".key")).length > 32);
   const sandbox = await page.evaluate(() => ({
     node: typeof window.require,
     process: typeof window.process,
@@ -139,17 +173,13 @@ try {
     .allTextContents();
   assert.ok(amounts[1].includes("1,402.23"));
   assert.ok(amounts[2].includes("332.39"));
-  const bars = await page
-    .locator(".chart-bar")
-    .evaluateAll((nodes) =>
-      nodes.map((node) => ({
-        month: node.dataset.month,
-        total: Number(
-          node.querySelector(".chart-total").getAttribute("height"),
-        ),
-        paid: Number(node.querySelector(".chart-paid").getAttribute("height")),
-      })),
-    );
+  const bars = await page.locator(".chart-bar").evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      month: node.dataset.month,
+      total: Number(node.querySelector(".chart-total").getAttribute("height")),
+      paid: Number(node.querySelector(".chart-paid").getAttribute("height")),
+    })),
+  );
   const rows = initial.value.items.filter(
     (b) => b.settlementStatus !== "voided",
   );
@@ -234,8 +264,14 @@ try {
   );
   assert.deepEqual(errors, []);
   assert.deepEqual(requests, []);
-  await app.close();
+  // Simulate an abrupt process death: the encrypted WAL and OS key must survive without app.quit().
+  const closed = app.waitForEvent("close", { timeout: 10000 });
+  await app.evaluate(() => {
+    setTimeout(() => process.exit(9), 100);
+  });
+  await closed;
   app = undefined;
+  env.LEDGERNEST_TEST_PROFILE = resolve(dir, "fresh-profile-after-crash");
   // New process reopens the same file; session must not persist, bills must persist.
   app = await electron.launch({ args: ["."], cwd: process.cwd(), env });
   const restarted = await app.firstWindow();
@@ -269,6 +305,7 @@ try {
       chartMonths: 6,
       formCreate: true,
       restartPersistence: true,
+      crashRecovery: true,
       sandbox: true,
       httpRequests: requests.length,
       pageErrors: errors.length,

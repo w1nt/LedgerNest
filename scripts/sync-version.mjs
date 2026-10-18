@@ -18,6 +18,8 @@ function update(path, transform) {
 for (const path of ['package.json', 'package-lock.json', 'frontend/my-react-app/package.json', 'frontend/my-react-app/package-lock.json']) {
   update(path, text => {
     const data = JSON.parse(text);
+    const rootPackage = data.packages?.[''];
+    if (data.version === version && (!rootPackage || rootPackage.version === version)) return text;
     data.version = version;
     if (data.packages?.['']) data.packages[''].version = version;
     return JSON.stringify(data, null, 2) + '\n';

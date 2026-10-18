@@ -8,7 +8,11 @@ import {
 } from "electron";
 import { access, readFile } from "node:fs/promises";
 import { resolve, extname, relative, isAbsolute } from "node:path";
-import { Store } from "./database.ts";
+import { openVault } from "./vault.ts";
+import { osProtector } from "./os-protector.ts";
+import { seedExample } from "./fixtures.ts";
+import { createBackup, restoreBackup } from "./backup.ts";
+import { readFileSync } from "node:fs";
 import { LocalService } from "./service.ts";
 import { AppError, reply } from "./errors.ts";
 import { trustedURL, channels } from "./boundary.ts";
@@ -34,11 +38,19 @@ if (test) {
     throw new Error("Test profile and database required");
   app.setPath("userData", process.env.LEDGERNEST_TEST_PROFILE);
 }
-let store: Store | undefined;
+let vault: ReturnType<typeof openVault> | undefined;
+const storageArg = process.argv.find((arg) =>
+  arg.startsWith("--ledgernest-storage="),
+);
+const storageCommand = storageArg?.split("=")[1];
 let window: BrowserWindow | undefined;
 const lock = app.requestSingleInstanceLock();
-if (!lock) app.quit();
-else {
+if (!lock) {
+  if (storageCommand) {
+    console.error("Close LedgerNest before running storage tools.");
+    app.exit(1);
+  } else app.quit();
+} else {
   app.on("second-instance", () => {
     if (window) {
       if (window.isMinimized()) window.restore();
@@ -54,7 +66,49 @@ else {
           ? resolve(app.getPath("userData"), "data/ledgernest.sqlite")
           : resolve(root, "data/ledgernest.sqlite");
       // Schema guard runs before serving any renderer. Existing data is never replaced by fixtures.
-      store = new Store(dbPath, resolve(__dirname, "schema.sql"));
+      const schema = resolve(__dirname, "schema.sql");
+      if (storageCommand === "restore") {
+        const index = process.argv.indexOf(storageArg!);
+        const [backup, target] = process.argv.slice(index + 1);
+        const input = readFileSync(0, "utf8");
+        if (input.length > 2048 || !backup || !target)
+          throw new Error("Invalid restore request.");
+        await restoreBackup(
+          backup,
+          target,
+          JSON.parse(input).password,
+          schema,
+          osProtector,
+        );
+        console.log("Encrypted backup restored to the new database.");
+        app.quit();
+        return;
+      }
+      vault = openVault(dbPath, schema, osProtector);
+      const store = vault.store;
+      if (storageCommand) {
+        if (storageCommand === "seed") console.log(await seedExample(store));
+        else if (storageCommand === "encrypt")
+          console.log(
+            JSON.stringify({
+              encrypted: true,
+              migrated: vault.migrated,
+              recoveryCreated: !!vault.recovery,
+            }),
+          );
+        else if (storageCommand === "backup") {
+          const target = process.argv[process.argv.indexOf(storageArg!) + 1],
+            input = readFileSync(0, "utf8");
+          if (!target || input.length > 2048)
+            throw new Error("Invalid backup request.");
+          await createBackup(store, target, JSON.parse(input).password);
+          console.log("Passphrase-protected encrypted backup created.");
+        } else throw new Error("Unknown storage operation.");
+        vault.close();
+        vault = undefined;
+        app.quit();
+        return;
+      }
       const assets = resolve(root, "frontend/my-react-app/dist");
       await access(resolve(assets, "index.html"));
       await access(resolve(__dirname, "preload.cjs"));
@@ -194,21 +248,30 @@ else {
       });
     })
     .catch(() => {
-      if (!test)
+      if (!test && !storageCommand)
         dialog.showErrorBox(
           "LedgerNest",
-          "Unable to open local storage. Check the database path, schema version and permissions. Existing data has not been reset.",
+          "Unable to unlock local storage. Close other LedgerNest processes and check your OS key store, database key, schema and permissions. Restore an encrypted backup if the key is lost. Existing data has not been reset.",
         );
       // Deliberately omit internal paths, SQL and credentials from startup diagnostics.
-      console.error(
-        "LedgerNest startup failed: local storage or application resources unavailable.",
-      );
+      console.error("LedgerNest storage startup failed.");
+      if (storageCommand)
+        console.error(
+          "Storage could not be unlocked or validated. No database was reset.",
+        );
+      try {
+        vault?.close();
+      } catch {}
       app.exit(1);
     });
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
   });
   app.on("will-quit", () => {
-    store?.close();
+    try {
+      vault?.close();
+    } catch {
+      console.error("Unable to close local storage cleanly.");
+    }
   });
 }

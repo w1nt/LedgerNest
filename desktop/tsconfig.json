@@ -6,13 +6,13 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "types": [
-      "node"
-    ],
-    "skipLibCheck": true
+    "types": ["node"],
+    "skipLibCheck": true,
+    "paths": {
+      "better-sqlite3-multiple-ciphers": [
+        "../node_modules/better-sqlite3-multiple-ciphers/index.d.ts"
+      ]
+    }
   },
-  "include": [
-    "./*.ts",
-    "../shared/*.ts"
-  ]
+  "include": ["./*.ts", "../shared/*.ts"]
 }

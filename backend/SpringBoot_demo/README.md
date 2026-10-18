@@ -2,6 +2,16 @@
 
 当前版本为 `0.1.0-SNAPSHOT`，由根目录 `VERSION` 和 `scripts/sync-version.mjs` 管理。目录名与 Java 包名暂沿用原型，以控制迁移范围。
 
+## 本地存储加密 — 2026-10-18
+
+桌面持久化已从 node:sqlite 换用 better-sqlite3-multiple-ciphers / SQLite3MultipleCiphers，采用 AES-256 页加密和 SHA-512 HMAC。随机数据库密钥由 Windows CurrentUser DPAPI 或 macOS/Linux safeStorage 保护；Linux basic_text 降级被拒绝。渲染进程不接触密钥，密钥不进入 SQL、环境变量、命令行或日志。
+
+现有明文 v1 库启动时验证、逐表复制并核对后迁移，保留加密恢复副本及原账号/账单；加密库缺失或错误密钥不会自动初始化。WAL 页加密、临时 SQL 数据内存化、私有文件 ACL/权限、进程锁、外键、完整性检查和事务保护已接入。Windows 已实测；macOS/Linux 系统密钥后端尚需平台验证。
+
+根目录新增 storage:encrypt / storage:backup / storage:restore。便携备份使用独立随机密钥、scrypt 和 AES-256-GCM，可在新系统账户恢复并重新绑定 OS 保护；恢复拒绝覆盖已有数据库。操作方式及 512 MiB 备份上限见根 README。当前无备份设置页面，数据库加密不替代 OS 账号和磁盘安全，不保护同一已解锁账号中的恶意软件。
+
+本目录的 JDBC 驱动不能读取桌面加密文件。下方 HTTP 测试或旧导入流程只能使用单独的可丢弃明文库，禁止将 Java 参考程序指向当前桌面数据库。
+
 ## Electron 替代进度 — 2026-10-18
 
 日常桌面启动已改为仓库根目录 npm start，不需要本目录的 Java 进程。desktop/ 下的 TypeScript 本机业务层通过受限 IPC 提供注册、登录、当前用户、退出、账单分页及新增；使用 Node 内置 SQLite，兼容当前十表结构、整数分、UTC 时间和 PBKDF2 密码哈希。现有 React 账单、概览和趋势图已接通本地数据。

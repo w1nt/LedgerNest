@@ -10,6 +10,12 @@
 
 AI 是后续可选功能：由用户提供 API，基础功能独立工作；界面应明确告知将发送给第三方服务的数据范围。
 
+## 数据加密 — 2026-10-18
+
+桌面主进程已启用 SQLite 整库页加密、系统密钥保护、WAL 加密及私有文件权限。现有前端 IPC 方法和展示结构不变，页面不获取数据库密钥；应用登录密码与数据库随机密钥相互独立。旧数据自动验证并迁移，测试账号 example@example.com / example123 与 32 笔账单保留。
+
+便携密码备份/恢复目前通过根目录 storage:backup / storage:restore 命令执行，设置页尚无入口；更换电脑或重装系统前应生成便携备份。不能直接用 Java/普通 SQLite 打开当前加密文件。详见根 README。未接入 Plaid/AI。
+
 ## 桌面运行 — 2026-10-18
 
 从仓库根目录运行，开发环境使用 Node.js 24.17+：
@@ -23,7 +29,7 @@ npm start
 
 页面和 BrowserRouter 路由保持不变；Electron 从 ledgernest://app 加载构建产物。services/api.ts 在桌面环境调用受限 preload 接口，登录、注册、当前用户、退出、分页账单与新增账单通过 IPC 访问本地 SQLite，不需要 Java、HTTP 或 Vite 服务。图表继续在前端使用整数分汇总。
 
-浏览器 HTTP 适配器仅保留作旧实现回归：先手动启动 Java 后端，再在本目录 npm run dev。当前桌面会话由主进程维护，不使用 Cookie；渲染进程无 Node、SQL、文件路径或任意 IPC 权限。打包分发、首次配置、银行流水及 AI 尚未实现。
+浏览器 HTTP 适配器仅保留作旧实现回归：先为 Java 配置独立的可丢弃明文数据库，再手动启动后端和本目录 npm run dev；Java 无法打开桌面加密库。当前桌面会话由主进程维护，不使用 Cookie；渲染进程无 Node、SQL、文件路径或任意 IPC 权限。打包分发、首次配置、银行流水及 AI 尚未实现。
 
 ```powershell
 npm run build
