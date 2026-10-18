@@ -13,9 +13,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** Real HTTP/MySQL integration tests; only UUID-prefixed test accounts are cleaned up. */
+/** Real HTTP/SQLite integration tests; only UUID-prefixed test accounts are cleaned up. */
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties={"app.security.registrations-per-quarter-hour=1000","app.security.logins-per-minute=300"})
-class ApiIntegrationTests {
+class ApiIntegrationTests extends SqliteTestDatabase {
  @Value("${local.server.port}") int port;
  @Autowired JdbcTemplate jdbc;
  @Autowired ObjectMapper json;
@@ -302,9 +302,9 @@ class ApiIntegrationTests {
   HttpClient client=account(); long id=data(send(client,"GET","/me",null),200).get("id").asLong();
   var now=LocalDateTime.of(2026,10,20,0,0);
   List<Object[]> rows=new ArrayList<>();
-  for(int i=0;i<1001;i++) rows.add(new Object[]{id,new java.math.BigDecimal("0.01"),"批量测试","",now,now,now});
-  jdbc.batchUpdate("INSERT INTO bills(userId,amount,vendorName,comment,createdAt,updatedAt,dueAt) VALUES(?,?,?,?,?,?,?)",rows);
-  jdbc.update("INSERT INTO bill_settlements(billId,remainingAmount) SELECT id,amount FROM bills WHERE userId=?",id);
+  for(int i=0;i<1001;i++) rows.add(new Object[]{id,1L,"批量测试","",org.example.springboot_demo.repository.DatabaseValues.time(now),org.example.springboot_demo.repository.DatabaseValues.time(now),org.example.springboot_demo.repository.DatabaseValues.time(now)});
+  jdbc.batchUpdate("INSERT INTO bills(userId,amountCents,vendorName,comment,createdAt,updatedAt,dueAt) VALUES(?,?,?,?,?,?,?)",rows);
+  jdbc.update("INSERT INTO bill_settlements(billId,remainingAmountCents) SELECT id,amountCents FROM bills WHERE userId=?",id);
   assertEquals(409,send(client,"GET","/bills",null).statusCode());
   var page=data(send(client,"GET","/bills/page?size=100",null),200);
   assertEquals(1001,page.get("total").asInt()); assertEquals(100,page.get("items").size());

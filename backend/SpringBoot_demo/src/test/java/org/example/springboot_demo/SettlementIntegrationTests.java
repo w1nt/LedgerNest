@@ -20,10 +20,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** Real HTTP + MySQL, with only the unconfigured network adapter replaced by a controlled test double. */
+/** Real HTTP + SQLite, with only the unconfigured network adapter replaced by a controlled test double. */
 @SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties={"app.security.registrations-per-quarter-hour=1000","app.security.logins-per-minute=300"})
-class SettlementIntegrationTests {
+class SettlementIntegrationTests extends SqliteTestDatabase {
     @Value("${local.server.port}") int port;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
@@ -245,7 +245,7 @@ class SettlementIntegrationTests {
         assertEquals(1,detail().get("returns").size());assertEquals("10.00",snapshot().get("returnedAmount").asString());
     }
     @Test void legacyStatusIsAbsentAndBasicEditsInvalidateStaleFinancialCommands() throws Exception {
-        assertEquals(0L,jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bills' AND COLUMN_NAME='status'",Long.class));
+        assertEquals(0L,jdbc.queryForObject("SELECT COUNT(*) FROM pragma_table_info('bills') WHERE name='status'",Long.class));
         var b=ok(send(client,"GET",root(),null,null),200);assertFalse(b.has("status"));
         assertEquals("unpaid",b.get("settlementStatus").asString());assertEquals("100.00",b.get("remainingAmount").asString());
         var stale=input("record_payment");stale.putAll(Map.of("source","app","amount","100.00","state","created"));

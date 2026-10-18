@@ -6,11 +6,11 @@
 
 项目转为免费开源的本地个人财务工具。后端由用户在自己的电脑上运行，不由作者托管在线账户、数据库或 API 服务；不再以云端上线或支付执行作为目标。
 
-初版目标为用户自备 Plaid 凭据、银行授权、流水同步、本地保存与确定性统计。之后可增加本地规则和用户自备 AI API 的只读分析工具。**当前代码尚未实现 Plaid、本地嵌入式数据库、配置向导或 AI。** 具体边界见[根 README](../../README.md)。
+初版目标为用户自备 Plaid 凭据、银行授权、流水同步、本地保存与确定性统计。之后可增加本地规则和用户自备 AI API 的只读分析工具。**已完成 SQLite 本地存储迁移；Plaid、配置向导和 AI 尚未实现。** 具体边界见[根 README](../../README.md)。
 
 ## 当前保留的原型
 
-- Spring Boot + JDBC + MySQL，默认监听 `127.0.0.1:8080`。
+- Spring Boot + JDBC + SQLite，默认监听 `127.0.0.1:8080`。
 - `controller/` 负责 HTTP；`service/` 协调业务与事务；`repository/` 集中参数化 SQL 和行映射；`model/` 与 `dto/` 分离。
 - 注册、登录、退出、资料、密码和偏好；账单 CRUD、筛选分页、汇总、趋势与提醒。
 - `users`、`user_preferences`、`bills`、`bill_creation_requests` 及六张结算相关表，是继承的十表账单模型。
@@ -29,20 +29,24 @@
 
 ## 运行与验证
 
-当前仍需本机 MySQL、JDK 17+。按根 README 创建专用空库、导入 `src/main/resources/schema.sql`，并设置 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`。
+仅需 JDK 17+，不再需要 MySQL 服务、数据库用户或 DB_URL / DB_USERNAME / DB_PASSWORD。默认从项目根目录创建 `data/ledgernest.sqlite`，启动时自动建表；可用 `LEDGERNEST_DB_PATH` 指定其他文件。
 
 ```powershell
-# 以下命令从仓库根目录运行：
-./backend/SpringBoot_demo/init-local-db.ps1 -DatabaseName ledgernest_dev
+# 从仓库根目录执行；测试数据库自动隔离：
 ./backend/SpringBoot_demo/test-local.ps1
 ./backend/SpringBoot_demo/start-local.ps1
 ```
 
-初始化仅面向新的独立数据库，不改写旧项目数据库；迁移 SQL 保留作历史参考。运行账号仅需本项目库的 DML 权限。脚本不读取旧目录的 DPAPI 文件，不携带现成数据库账号密码，也不自动复制旧数据。
+`init-local-db.ps1` 仅保留为提示入口，无需手动初始化。其他系统在本目录执行 `./mvnw package` 后，回到根目录运行 `java -jar backend/SpringBoot_demo/target/SpringBoot_demo-0.1.0-SNAPSHOT.jar`。首次构建需要网络下载依赖。
 
-其他系统可在本目录执行 `./mvnw package`，随后运行 `java -jar target/SpringBoot_demo-0.1.0-SNAPSHOT.jar`。Maven wrapper 负责取得构建工具，首次使用需要网络。
+### SQLite 迁移 — 2026-10-17
 
-`test-local.ps1` 执行现有 41 项回归测试并打包；测试会在已配置的数据库中创建和清理各自的临时记录，应使用独立开发/测试库。它们验证继承的账单原型，不代表 Plaid、AI 或新本地架构已通过验收。
+- 删除 MySQL 运行时驱动与旧 MySQL 专用迁移 SQL，改用嵌入式 SQLite JDBC；原十张业务表暂保留以兼容现有功能，不扩展支付。
+- 金额列改为 `amountCents` 等 INTEGER 分值，API 继续返回十进制金额字符串；UTC 时间保存为固定九位小数的文本，避免驱动时区和排序差异。
+- 使用 STRICT 表、每个连接启用外键、WAL、10 秒 busy timeout、IMMEDIATE 事务和有限连接池。通过数据库写事务串行化替代 MySQL 的 FOR UPDATE，保留事务回滚、版本检查与幂等行为。
+- `test-local.ps1` 在全新的临时 SQLite 文件运行 45 项后端测试并打包，不再连接应用文件或旧 MySQL。另有 4 项 Python 迁移工具测试，覆盖数据保留、拒绝覆盖、失败不留下半成品与金额精度。
+- `scripts/migrate-mysql-to-sqlite.py` 提供可重复使用的一次性只读迁移流程：保留账号、密码哈希、编号和历史，校验所有行、外键与数据库完整性；目标已存在时拒绝覆盖。工具仅迁移时需要 Python/MySQL CLI，正常运行不需要它们。
+- SQLite 数据文件及 WAL/SHM、日志、缓存由 Git 忽略；文件不是自动加密的，备份时先停止应用或使用 SQLite backup API。后续移动端选型需支持当前 STRICT 表格式（SQLite 3.37+）。
 
 需要合成数据时可运行 `node backend/SpringBoot_demo/seed-example.mjs`。它通过本地 API 创建 `example@example.com` / `example123` 测试账号和预设账单；不是银行数据，也不会重置已有密码。
 

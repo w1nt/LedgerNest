@@ -1,5 +1,7 @@
 package org.example.springboot_demo.repository;
 
+import static org.example.springboot_demo.repository.DatabaseValues.*;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.example.springboot_demo.model.UserCredentials;
@@ -18,7 +20,7 @@ public class UserRepository {
 
     public void insert(String username, String email, String passwordHash, String address, LocalDateTime now) {
         jdbc.update("INSERT INTO users(username,email,password,address,createdAt,updatedAt) VALUES(?,?,?,?,?,?)",
-                username, email, passwordHash, address, now, now);
+                username, email, passwordHash, address, time(now), time(now));
     }
 
     public Optional<UserProfile> findProfileByEmail(String email) {
@@ -40,10 +42,10 @@ public class UserRepository {
     }
 
     public int updateProfile(long userId, String username, String address, LocalDateTime now) {
-        return jdbc.update("UPDATE users SET username=?,address=?,updatedAt=? WHERE id=?", username, address, now, userId);
+        return jdbc.update("UPDATE users SET username=?,address=?,updatedAt=? WHERE id=?", username, address, time(now), userId);
     }
 
     public int updatePasswordIfCurrent(long userId, String currentHash, String nextHash, LocalDateTime now) {
-        return jdbc.update("UPDATE users SET password=?,updatedAt=? WHERE id=? AND password=?", nextHash, now, userId, currentHash);
+        return jdbc.update("UPDATE users SET password=?,updatedAt=? WHERE id=? AND password=?", nextHash, time(now), userId, currentHash);
     }
 }

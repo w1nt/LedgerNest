@@ -1,5 +1,7 @@
 package org.example.springboot_demo.repository;
 
+import static org.example.springboot_demo.repository.DatabaseValues.*;
+
 import java.math.BigDecimal;
 import java.sql.Statement;
 import java.time.LocalDateTime;
@@ -19,18 +21,18 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class BillRepository {
     private static final String FROM = " FROM bills JOIN bill_settlements fs ON fs.billId=bills.id";
-    private static final String REMAINING = "fs.remainingAmount";
-    private static final String CONFIRMED = "fs.confirmedAmount";
+    private static final String REMAINING = "fs.remainingAmountCents";
+    private static final String CONFIRMED = "fs.confirmedAmountCents";
     private static final String STAGE = "fs.stage";
-    private static final String COLUMNS = "bills.id,amount,vendorName,comment,createdAt,dueAt,updatedAt,paidAt,"
+    private static final String COLUMNS = "bills.id,amountCents,vendorName,comment,createdAt,dueAt,updatedAt,paidAt,"
             +STAGE+" AS settlementStatus,COALESCE(fs.version,0) AS settlementVersion,"
-            +CONFIRMED+" AS confirmed,COALESCE(fs.pendingAmount,0) AS processing,"+REMAINING+" AS remaining,COALESCE(fs.overpaidAmount,0) AS overpaid";
+            +CONFIRMED+" AS confirmed,COALESCE(fs.pendingAmountCents,0) AS processing,"+REMAINING+" AS remaining,COALESCE(fs.overpaidAmountCents,0) AS overpaid";
     private static final RowMapper<Bill> BILL = (rs, n) -> new Bill(rs.getLong("id"),
-            rs.getBigDecimal("amount"), rs.getString("vendorName"), rs.getString("comment"),
-            rs.getObject("createdAt", LocalDateTime.class), rs.getObject("dueAt", LocalDateTime.class),
-            rs.getObject("updatedAt", LocalDateTime.class), rs.getObject("paidAt", LocalDateTime.class),
-            rs.getString("settlementStatus"),rs.getLong("settlementVersion"),rs.getBigDecimal("confirmed"),rs.getBigDecimal("processing"),
-            rs.getBigDecimal("remaining"),rs.getBigDecimal("overpaid"));
+            money(rs,"amountCents"), rs.getString("vendorName"), rs.getString("comment"),
+            time(rs.getString("createdAt")), time(rs.getString("dueAt")),
+            time(rs.getString("updatedAt")), time(rs.getString("paidAt")),
+            rs.getString("settlementStatus"),rs.getLong("settlementVersion"),money(rs,"confirmed"),money(rs,"processing"),
+            money(rs,"remaining"),money(rs,"overpaid"));
     private final JdbcTemplate jdbc;
 
     public BillRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
@@ -39,15 +41,15 @@ public class BillRepository {
         var key = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             var statement = connection.prepareStatement(
-                    "INSERT INTO bills(userId,amount,vendorName,comment,createdAt,updatedAt,dueAt) VALUES(?,?,?,?,?,?,?)",
+                    "INSERT INTO bills(userId,amountCents,vendorName,comment,createdAt,updatedAt,dueAt) VALUES(?,?,?,?,?,?,?)",
                     Statement.RETURN_GENERATED_KEYS);
             statement.setLong(1, userId);
-            statement.setBigDecimal(2, amount);
+            statement.setLong(2, cents(amount));
             statement.setString(3, name);
             statement.setString(4, comment);
-            statement.setObject(5, now);
-            statement.setObject(6, now);
-            statement.setObject(7, due);
+            statement.setString(5, time(now));
+            statement.setString(6, time(now));
+            statement.setString(7, time(due));
             return statement;
         }, key);
         return Objects.requireNonNull(key.getKey()).longValue();
@@ -58,13 +60,13 @@ public class BillRepository {
     }
 
     public int updateForUser(long userId, long id, BigDecimal amount, String name, String comment, LocalDateTime due, LocalDateTime now) {
-        return jdbc.update("UPDATE bills SET amount=?,vendorName=?,comment=?,dueAt=?,updatedAt=? WHERE userId=? AND id=?",
-                amount, name, comment, due, now, userId, id);
+        return jdbc.update("UPDATE bills SET amountCents=?,vendorName=?,comment=?,dueAt=?,updatedAt=? WHERE userId=? AND id=?",
+                cents(amount), name, comment, time(due), time(now), userId, id);
     }
 
     public void updateCompletionForUser(long userId,long id,boolean completed,LocalDateTime now) {
         jdbc.update("UPDATE bills SET paidAt=CASE WHEN ? THEN COALESCE(paidAt,?) ELSE NULL END,updatedAt=? WHERE userId=? AND id=?",
-                completed,now,now,userId,id);
+                completed,time(now),time(now),userId,id);
     }
 
     public int deleteForUser(long userId, long id) {
@@ -83,17 +85,17 @@ public class BillRepository {
         }
         if (!criteria.query().isEmpty()) {
             // Literal search preserves '%' and '_' as text; inputs never become SQL syntax.
-            sql.append(" AND (LOCATE(LOWER(?),LOWER(vendorName))>0 OR LOCATE(LOWER(?),LOWER(comment))>0)");
+            sql.append(" AND (instr(LOWER(vendorName),LOWER(?))>0 OR instr(LOWER(comment),LOWER(?))>0)");
             args.add(criteria.query()); args.add(criteria.query());
         }
         if(criteria.status().equals("outstanding")) sql.append(" AND "+REMAINING+">0");
         if (criteria.status().equals("overdue")) {
             sql.append(" AND "+REMAINING+">0 AND dueAt<?");
-            args.add(criteria.overdueBefore());
+            args.add(time(criteria.overdueBefore()));
         }
         if (criteria.dueFrom() != null) {
             sql.append(" AND dueAt>=? AND dueAt<?");
-            args.add(criteria.dueFrom()); args.add(criteria.dueUntil());
+            args.add(time(criteria.dueFrom())); args.add(time(criteria.dueUntil()));
         }
         return new Filter(sql.toString(), args);
     }
@@ -120,24 +122,24 @@ public class BillRepository {
     public BillSummary summarizeForUser(long userId, BillCriteria criteria) {
         var filter = filter(userId, criteria);
         String overdue = "("+REMAINING+">0 AND dueAt<?)";
-        String sql = "SELECT COUNT(*) AS totalCount, COALESCE(SUM(amount),0) AS totalAmount, "
-                + "COALESCE(SUM(LEAST(amount,GREATEST(0,"+CONFIRMED+"))),0) AS paidAmount, "
-                + "COALESCE(SUM("+REMAINING+"),0) AS pendingAmount, "
+        String sql = "SELECT COUNT(*) AS totalCount, COALESCE(SUM(amountCents),0) AS totalAmount, "
+                + "COALESCE(SUM(MIN(amountCents,MAX(0,"+CONFIRMED+"))),0) AS paidAmount, "
+                + "COALESCE(SUM("+REMAINING+"),0) AS pendingAmountCents, "
                 + "COALESCE(SUM(CASE WHEN " + overdue + " THEN "+REMAINING+" ELSE 0 END),0) AS overdueAmount, "
                 + "COALESCE(SUM(CASE WHEN "+STAGE+"='completed' THEN 1 ELSE 0 END),0) AS paidCount, "
                 + "COALESCE(SUM(CASE WHEN " + overdue + " THEN 1 ELSE 0 END),0) AS overdueCount,"
-                + "COALESCE(SUM(fs.pendingAmount),0) AS processingAmount,COALESCE(SUM(fs.overpaidAmount),0) AS overpaidAmount,"
-                + "COALESCE(SUM("+CONFIRMED+"),0) AS confirmedAmount"+FROM+filter.sql();
+                + "COALESCE(SUM(fs.pendingAmountCents),0) AS processingAmount,COALESCE(SUM(fs.overpaidAmountCents),0) AS overpaidAmountCents,"
+                + "COALESCE(SUM("+CONFIRMED+"),0) AS confirmedAmountCents"+FROM+filter.sql();
         List<Object> args = new ArrayList<>();
-        args.add(criteria.overdueBefore()); args.add(criteria.overdueBefore()); args.addAll(filter.args());
+        args.add(time(criteria.overdueBefore())); args.add(time(criteria.overdueBefore())); args.addAll(filter.args());
         return jdbc.queryForObject(sql, (rs, n) -> new BillSummary(rs.getLong("totalCount"),
-                rs.getBigDecimal("totalAmount"), rs.getBigDecimal("paidAmount"), rs.getBigDecimal("pendingAmount"),
-                rs.getBigDecimal("overdueAmount"), rs.getLong("paidCount"), rs.getLong("overdueCount"),
-                rs.getBigDecimal("processingAmount"),rs.getBigDecimal("overpaidAmount"),rs.getBigDecimal("confirmedAmount")), args.toArray());
+                money(rs,"totalAmount"), money(rs,"paidAmount"), money(rs,"pendingAmountCents"),
+                money(rs,"overdueAmount"), rs.getLong("paidCount"), rs.getLong("overdueCount"),
+                money(rs,"processingAmount"),money(rs,"overpaidAmountCents"),money(rs,"confirmedAmountCents")), args.toArray());
     }
 
     public List<Bill> findRemindersForUser(long userId, LocalDateTime before, int limit) {
         return jdbc.query("SELECT " + COLUMNS + FROM + " WHERE userId=? AND fs.lifecycle='open' AND "+REMAINING+">0 AND dueAt<? ORDER BY dueAt,bills.id LIMIT ?",
-                BILL, userId, before, limit);
+                BILL, userId, time(before), limit);
     }
 }

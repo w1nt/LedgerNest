@@ -6,16 +6,17 @@ LedgerNest is a free, open-source project intended to run on your own computer. 
 
 ## Current Status
 
-**`0.1.0-SNAPSHOT` is a migration baseline extracted from an existing billing application, not a finished Plaid-powered desktop product.** The current code runs as a local React + Spring Boot + MySQL prototype. Plaid Link, bank transaction syncing, embedded storage, and an AI agent are not implemented. The roadmap below describes planned work, not completed features.
+**`0.1.0-SNAPSHOT` is a migration baseline extracted from an existing billing application, not a finished Plaid-powered desktop product.** The current code runs as a local React + Spring Boot + SQLite prototype. Embedded SQLite storage is implemented. Plaid Link, bank transaction syncing, guided first-run setup, and an AI agent are not implemented. The roadmap below describes planned work, not completed features.
 
 | Feature | Status |
 | --- | --- |
 | Bill lists, search, filters, creation, overview, and trend charts | Existing prototype |
 | Chinese and English interfaces, themes, shared dropdowns, and amount tooltips | Existing prototype |
-| Local backend, MySQL, account sessions, and basic security controls | Existing prototype; needs adaptation to a local-tool workflow |
+| Local backend, SQLite, account sessions, and basic security controls | Existing prototype; needs adaptation to a local-tool workflow |
 | User-provided Plaid credentials and Link authorization | Not implemented |
 | Historical transaction imports, incremental syncing, and reconciliation | Not implemented |
-| Embedded local storage, first-run setup, and simplified startup | Not implemented; storage technology has not been selected |
+| Embedded local storage | Implemented with SQLite; no database service or database credentials required |
+| Guided first-run setup and application packaging | Not implemented |
 | Personalized local rules, budgets, and reminders | Not implemented |
 | User-provided AI API and optional analysis assistant | Future extension |
 
@@ -47,28 +48,26 @@ Official references: [Transactions](https://plaid.com/docs/transactions/) and [P
 
 ## Run the Current Prototype
 
-The current baseline requires Node.js 22.18+, JDK 17+, and a local MySQL 8.4 installation. MySQL is an inherited prototype dependency; migration to embedded local storage has not been completed.
+The current baseline requires Node.js 22.18+ and JDK 17+. SQLite is embedded in the backend; no MySQL installation, database account, or Python runtime is required for normal use.
 
 ### Backend
 
-Create an empty local database named `ledgernest_dev` and a dedicated database user. After an administrator imports the schema, the runtime account needs only SELECT, INSERT, UPDATE, and DELETE privileges on that database. Do not point the prototype at a database containing real financial data.
-
-Run the following commands in PowerShell from the repository root. The initialization script prompts for the MySQL administrator password and does not read credentials from the previous project:
+Run these PowerShell commands from the repository root:
 
 ```powershell
-./backend/SpringBoot_demo/init-local-db.ps1 -DatabaseName ledgernest_dev
-
-$env:DB_URL = 'jdbc:mysql://127.0.0.1:3306/ledgernest_dev'
-$env:DB_USERNAME = 'ledgernest_app'
-$localPassword = Read-Host 'Local database password' -AsSecureString
-$env:DB_PASSWORD = [System.Net.NetworkCredential]::new('', $localPassword).Password
-$localPassword.Dispose()
-
 ./backend/SpringBoot_demo/test-local.ps1
 ./backend/SpringBoot_demo/start-local.ps1
 ```
 
-If Windows execution policy blocks a script, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-path>`. The backend listens only on `127.0.0.1:8080` by default. On other systems, set the same environment variables, build with `./mvnw package` in the backend directory, and run the resulting JAR with Java. Do not put database passwords in command-line arguments, source code, or logs. Remove `DB_PASSWORD` from the terminal environment when finished.
+On first startup, the backend creates `data/ledgernest.sqlite` and its schema automatically. `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` are no longer used. To choose another file, set `LEDGERNEST_DB_PATH` before starting; relative paths in the startup script resolve from the repository root.
+
+If Windows execution policy blocks a script, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-path>`. The backend listens only on `127.0.0.1:8080` by default. On other systems, build with `./mvnw package` in the backend directory, then run the JAR **from the repository root** so the default data path remains consistent:
+
+```sh
+java -jar backend/SpringBoot_demo/target/SpringBoot_demo-0.1.0-SNAPSHOT.jar
+```
+
+The SQLite file and its `-wal` / `-shm` sidecars contain local data and are ignored by Git. The database is not encrypted automatically. Keep it private and stop the application before making a manual file backup, or use SQLite's backup API. Do not place an actively shared database on a network drive or use file synchronization as multi-device database synchronization.
 
 ### Frontend
 
@@ -87,7 +86,7 @@ Visit `http://127.0.0.1:5173`. The development server proxies `/api` requests to
 The directory structure is retained from the prototype to support incremental migration:
 
 - `frontend/my-react-app/`: React, TypeScript, and Vite.
-- `backend/SpringBoot_demo/`: Spring Boot, JDBC, and MySQL.
+- `backend/SpringBoot_demo/`: Spring Boot, JDBC, and SQLite.
 - `scripts/sync-version.mjs`: synchronizes the root `VERSION` with frontend and backend metadata.
 
 ```powershell
@@ -97,13 +96,36 @@ npm --prefix frontend/my-react-app run lint
 npm --prefix frontend/my-react-app run test:security
 npm --prefix frontend/my-react-app run test:i18n
 npm --prefix frontend/my-react-app run test:trends
-# After configuring a dedicated local test database:
+# Tests use fresh temporary SQLite files, never your local application database:
 ./backend/SpringBoot_demo/test-local.ps1
+# Optional migration-tool tests (Python 3.10+):
+python -m unittest discover -s scripts/tests -v
 ```
 
 Frontend and backend development remain separate, but share this repository and the root `VERSION`. Future development is committed to this project only. Its Git history is independent and does not include commits from the private prototype repository.
 
 Existing frontend and backend development logs remain local and are excluded by `.gitignore`. Public updates belong in the corresponding README files. API credentials, local databases, backups, and build artifacts must not be committed.
+
+## SQLite Migration and Test Account
+
+The SQLite schema uses strict tables, foreign keys on every connection, WAL, and IMMEDIATE transactions. Monetary values are stored as **integer USD cents**; API amounts remain decimal strings. UTC timestamps are fixed-width text. This retains the existing bill API and does not implement bank syncing or payments.
+
+To create synthetic data in a fresh database after starting the backend:
+
+```powershell
+node backend/SpringBoot_demo/seed-example.mjs
+```
+
+Test email: `example@example.com`; username: `example`; password: `example123`. The seeder creates 32 synthetic bills and adds only missing fixtures; it never resets an existing password. No sample database or real account data is shipped in Git.
+
+For an existing legacy MySQL database, the optional one-time importer requires Python 3.10+ (SQLite 3.37+) and the MySQL CLI:
+
+```powershell
+# Set MYSQL_PWD in this terminal using your own source database credentials.
+python scripts/migrate-mysql-to-sqlite.py --user YOUR_READ_USER --database YOUR_DATABASE --output data/imported.sqlite
+```
+
+The importer uses a read-only consistent snapshot, preserves IDs/password hashes/timestamps, converts money without rounding, and verifies every row plus foreign keys and integrity. It refuses to overwrite an existing destination. Stop the application and set `LEDGERNEST_DB_PATH` to the imported file before starting it. Clear `MYSQL_PWD` from the terminal when finished. This importer is optional; MySQL is not a runtime dependency.
 
 ## License
 

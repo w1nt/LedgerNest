@@ -40,3 +40,10 @@ npm run test:trends
 - 本地日志继续使用 `frontend/前端UI开发记录.md`，由 Git 忽略。后续常规更新提交到 `w1nt/LedgerNest`。
 
 本次仓库分离保留图表金额浮层、月份键盘交互、共享下拉与趋势回归测试；没有增加支付、Plaid 或 AI 功能。
+
+## SQLite 联调 — 2026-10-17
+
+- 后端已迁移到本机 SQLite，前端 API、金额字符串及现有账单/图表接口保持兼容，无需配置 MySQL。
+- 现有本地测试账号与 32 笔预设账单已从旧库保留；邮箱 `example@example.com`，密码 `example123`。通过真实登录使用，不是演示模式。
+- 默认数据库为根目录 `data/ledgernest.sqlite`，由本地后端自动初始化；新安装可通过后端 seed-example.mjs 生成同类合成数据。
+- 此迁移不代表已接入 Plaid 或 AI；银行流水仍需后续独立建模。

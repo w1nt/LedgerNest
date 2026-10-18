@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
 
 /** Force failures AFTER another repository wrote: the outer service transaction must roll back all rows. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class RepositoryTransactionTests {
+class RepositoryTransactionTests extends SqliteTestDatabase {
     @Value("${local.server.port}") int port;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;

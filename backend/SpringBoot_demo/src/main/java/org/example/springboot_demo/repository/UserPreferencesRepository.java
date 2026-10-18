@@ -1,5 +1,7 @@
 package org.example.springboot_demo.repository;
 
+import static org.example.springboot_demo.repository.DatabaseValues.*;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,7 +14,7 @@ public class UserPreferencesRepository {
     public UserPreferencesRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     public void insertDefault(long userId, LocalDateTime now) {
-        jdbc.update("INSERT INTO user_preferences(userId,theme,updatedAt) VALUES(?,'system',?)", userId, now);
+        jdbc.update("INSERT INTO user_preferences(userId,theme,updatedAt) VALUES(?,'system',?)", userId, time(now));
     }
 
     public Optional<String> findThemeForUser(long userId) {
@@ -20,6 +22,6 @@ public class UserPreferencesRepository {
     }
 
     public int updateThemeForUser(long userId, String theme, LocalDateTime now) {
-        return jdbc.update("UPDATE user_preferences SET theme=?,updatedAt=? WHERE userId=?", theme, now, userId);
+        return jdbc.update("UPDATE user_preferences SET theme=?,updatedAt=? WHERE userId=?", theme, time(now), userId);
     }
 }
