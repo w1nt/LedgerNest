@@ -1,21 +1,129 @@
 /** 界面文案统一维护在这里。插值使用 {name}，禁止 HTML。 */
 const zhCN = {
+  "config.general": "外观与体验",
+  "config.connections": "API 与连接",
+  "config.security": "隐私与安全",
+  "config.data": "数据与备份",
+  "config.localOnly": "仅保存在本机",
+  "config.intro":
+    "让 LedgerNest 按你的习惯工作。掌握每一项偏好，也掌握数据的去向。",
+  "config.railNote": "你的设备，你的配置。密钥不会上传到作者的服务器。",
+  "config.experience": "显示与交互",
+  "config.themeNote": "选择浅色、深色，或与设备外观保持一致。",
+  "config.density": "界面密度",
+  "config.densityNote": "调整列表与表单的留白，不改变文字和数据。",
+  "config.comfortable": "舒适",
+  "config.compact": "紧凑",
+  "config.motion": "动态效果",
+  "config.motionNote": "系统设置为减少动态效果时始终优先。",
+  "config.motionSystem": "跟随系统",
+  "config.motionReduce": "减少动态效果",
+  "config.profileNote": "本地档案与当前系统用户关联，不需要单独设置登录密码。",
+  "config.demoNote":
+    "当前为示例模式。外观偏好可调整；API 凭据和安全配置需解锁真实本地空间后保存。",
+  "config.savedNotice": "设置已保存在本机。",
+  "config.integrationNote":
+    "这里可以安全保存未来接入所需的配置。银行授权、流水同步和 AI 调用尚未接通，保存不会发送请求或产生调用费用。",
+  "config.stored": "已保存 · 未连接",
+  "config.notConfigured": "未配置",
+  "config.optional": "可选配置",
+  "config.plaidDescription":
+    "使用你自己的 Plaid 开发者凭据。仅规划读取银行账户与交易，不提供支付或扣款。",
+  "config.environment": "使用环境",
+  "config.bankPending": "银行授权与流水同步待接入",
+  "config.aiTitle": "AI 分析助手",
+  "config.aiDescription":
+    "预留第三方 AI 配置。基础账目统计独立运行，未来调用前会说明哪些数据需要发送。",
+  "config.aiPending": "AI 调用待接入",
+  "config.provider": "服务商",
+  "config.model": "模型 ID",
+  "config.notSet": "未设置",
+  "config.configure": "配置",
+  "config.edit": "修改配置",
+  "config.remove": "移除",
+  "config.secretPolicy":
+    "凭据加密保存在本机；保存后只显示首尾，不提供明文查看或复制。",
+  "config.masked": "已隐藏的凭据，不可复制",
+  "config.editPlaid": "配置 Plaid",
+  "config.editAI": "配置 AI 服务",
+  "config.keepExisting":
+    "凭据不会被重新读取到输入框。留空保留原值，输入新值则替换；切换环境或服务地址需要重新提供对应凭据。",
+  "config.enterCredentials":
+    "请粘贴你自己的开发者凭据。这里只保存配置，不会验证或调用服务。",
+  "config.keepPlaceholder": "留空保留已保存的值",
+  "config.pasteCredential": "粘贴凭据",
+  "config.plaidScope":
+    "Sandbox 为模拟数据，Trial 使用 Production 环境。请填写相应环境的 Secret，而非银行账号或银行密码。",
+  "config.customProvider": "自定义 · OpenAI 兼容",
+  "config.modelPlaceholder": "填写服务商提供的模型 ID",
+  "config.aiPrivacy":
+    "当前不会向 AI 发送账目。未来每次授权发送的数据范围与 API 费用由你决定。",
+  "config.cancel": "取消",
+  "config.save": "保存配置",
+  "config.saving": "正在保存…",
+  "config.protection": "空间保护",
+  "config.deviceAuth": "设备身份验证",
+  "config.available": "已就绪",
+  "config.unavailable": "未就绪",
+  "config.autoLock": "自动锁定",
+  "config.autoLockNote":
+    "应用无数据访问或设备空闲达到时限后锁定；系统锁屏、休眠也会锁定。单次解锁最长 8 小时。",
+  "config.minutes": "{count} 分钟",
+  "config.encryption": "本地数据加密",
+  "config.encryptionNote": "账目使用加密 SQLite，API 凭据使用系统凭据保护。",
+  "config.encrypted": "已加密",
+  "config.demoStorage": "示例数据",
+  "config.dataTitle": "数据始终由你掌握",
+  "config.localStorage": "数据位置",
+  "config.localStorageNote": "账目保存在当前设备，不依赖作者提供的在线服务。",
+  "config.onDevice": "本地保存",
+  "config.portableBackup": "便携加密备份",
+  "config.backupNote": "已有本地命令行备份工具，应用内备份与恢复界面待开发。",
+  "config.backupInstructions":
+    "当前可从项目目录使用 storage:backup / storage:restore 工具创建或恢复口令加密备份；操作前关闭应用。恢复仅写入新的数据库文件。",
+  "config.credentialsBackupNote":
+    "现有便携备份只包含账目数据库，不包含本机 API 配置。更换设备后需要重新填写凭据。",
+  "config.cloudBackup": "备份到自己的云",
+  "config.cloudNote":
+    "计划支持用户自选云存储与跨设备重读，当前未连接任何云服务。",
+  "config.planned": "后续计划",
+  "config.version": "应用版本",
+  "config.about":
+    "免费开源的本地个人财务工具。银行流水与 AI 正在规划中，当前不提供支付、扣款或资金转移。",
+  "config.removeTitle": "移除本地 API 配置？",
+  "config.removeNote":
+    "将清除该服务在本机保存的凭据与配置，不会撤销平台上的授权或删除账目。需要时可重新配置。",
+  "config.removeConfirm": "确认移除",
+  "config.invalid":
+    "请检查配置格式；切换环境、服务商或地址时，请重新填写对应的凭据。",
+  "config.unavailableError":
+    "无法读取或保存本地配置。请检查系统凭据存储与文件权限；已有配置不会自动重置。",
+  "config.verified": "验证成功",
+  "config.opening": "正在打开本地空间…",
+  "config.retry": "重新读取",
+  "config.loading": "正在读取本地配置…",
+
   "device.eyebrow": "本地优先 · 只属于你",
   "device.storyFirst": "让账目更清晰，",
   "device.storySecond": "让生活更从容。",
-  "device.storyCopy": "把日常收支安放在一个简洁的空间。数据留在你的设备，随时等你回来。",
+  "device.storyCopy":
+    "把日常收支安放在一个简洁的空间。数据留在你的设备，随时等你回来。",
   "device.cardEyebrow": "你的专属财务空间",
   "device.title": "欢迎回来。",
-  "device.description": "使用设备身份验证，解锁本地记录。无需注册账号，也不用再记一组密码。",
+  "device.description":
+    "使用设备身份验证，解锁本地记录。无需注册账号，也不用再记一组密码。",
   "device.windows": "Windows Hello",
   "device.macos": "Touch ID 或 Mac 登录密码",
   "device.method": "设备身份验证",
   "device.checking": "正在检查设备验证…",
   "device.ready": "已就绪，使用系统身份验证",
   "device.needsAttention": "请检查设备验证设置",
-  "device.notConfigured": "请先在 Windows 登录选项中设置 PIN 或 Windows Hello，再重新检查。",
-  "device.unavailable": "系统验证暂不可用。请检查设备登录设置；若系统阻止了应用组件，需要使用可信签名版本。本地记录仍保持锁定。",
-  "device.desktopOnly": "请在 Windows 或 macOS 的 LedgerNest 桌面应用中解锁本地数据。此处仍可体验示例数据。",
+  "device.notConfigured":
+    "请先在 Windows 登录选项中设置 PIN 或 Windows Hello，再重新检查。",
+  "device.unavailable":
+    "系统验证暂不可用。请检查设备登录设置；若系统阻止了应用组件，需要使用可信签名版本。本地记录仍保持锁定。",
+  "device.desktopOnly":
+    "请在 Windows 或 macOS 的 LedgerNest 桌面应用中解锁本地数据。此处仍可体验示例数据。",
   "device.unlock": "解锁我的空间",
   "device.verifying": "等待系统验证…",
   "device.checkAgain": "重新检查",
@@ -31,7 +139,8 @@ const zhCN = {
   "device.errorCanceled": "已取消验证，本地记录仍保持锁定。",
   "device.errorDenied": "未通过系统验证，请重试。",
   "device.errorBusy": "已有系统验证正在进行，请先完成或取消。",
-  "device.multipleProfiles": "此旧数据库包含多个资料，请先拆分后使用设备解锁。原记录未被修改。",
+  "device.multipleProfiles":
+    "此旧数据库包含多个资料，请先拆分后使用设备解锁。原记录未被修改。",
   "device.profile": "本地资料",
   "device.systemProtection": "此空间由系统身份验证保护。",
   "chart.total": "账单总额",

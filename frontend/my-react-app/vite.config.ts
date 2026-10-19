@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
@@ -45,6 +46,11 @@ export default defineConfig(({ command, mode, isPreview }) => {
     },
   };
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(
+        readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim(),
+      ),
+    },
     plugins: [
       react(),
       {

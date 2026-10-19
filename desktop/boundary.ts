@@ -14,6 +14,10 @@ export function trustedURL(value: string) {
   }
 }
 export const channels = Object.freeze({
+  settings: "settings:get",
+  saveSecurity: "settings:security",
+  saveIntegration: "settings:integration",
+  removeIntegration: "settings:remove",
   deviceStatus: "device:status",
   unlock: "device:unlock",
   currentUser: "account:current",

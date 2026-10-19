@@ -11,6 +11,7 @@ export interface SessionState {
   unlockDevice: (
     locale: "zh-CN" | "en-US",
     signal?: AbortSignal,
+    onVerified?: (signal: AbortSignal) => Promise<void>,
   ) => Promise<boolean>;
   startDemo: () => void;
   signOut: () => Promise<boolean>;

@@ -195,3 +195,19 @@ test("production entry selects native verification and contains no fixture bypas
     /LEDGERNEST_TEST_AUTH|LEDGERNEST_E2E|TEST_PROFILE|app-entry/,
   );
 });
+
+test("custom lock timeout takes effect and refuses unsupported values", () =>
+  fixture(async ({ session, advance }) => {
+    await session.unlock("123", "en-US");
+    session.setIdleMinutes(5);
+    advance(5 * 60000);
+    locked(session);
+    await session.unlock("123", "en-US");
+    session.setIdleMinutes(30);
+    advance(15 * 60000);
+    assert.ok(session.currentUser());
+    session.checkExpiry(1800);
+    locked(session);
+    assert.throws(() => session.setIdleMinutes(0));
+    assert.throws(() => session.setIdleMinutes(60));
+  }));

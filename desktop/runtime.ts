@@ -14,6 +14,7 @@ import { osProtector } from "./os-protector.ts";
 import { seedExample } from "./fixtures.ts";
 import { createBackup, restoreBackup } from "./backup.ts";
 import { readFileSync } from "node:fs";
+import { SettingsStore } from "./settings.ts";
 import { DeviceSession } from "./device-session.ts";
 import type { DeviceAuthenticator } from "./device-auth.ts";
 import { userInfo } from "node:os";
@@ -148,6 +149,7 @@ export function runDesktop(
           userInfo()
             .username.replace(/[\u0000-\u001f\u007f-\u009f]/gu, "")
             .slice(0, 100) || "Local profile";
+        const settings = new SettingsStore(dbPath + ".settings", osProtector);
         const device = new DeviceSession(
           auth,
           () => openVault(dbPath, schema, osProtector),
@@ -275,6 +277,24 @@ export function runDesktop(
           });
           window = win;
           const operations = {
+            settings: () => {
+              device.requireService();
+              return settings.get();
+            },
+            saveSecurity: (value: unknown) => {
+              device.requireService();
+              const next = settings.saveSecurity(value);
+              device.setIdleMinutes(next.idleMinutes);
+              return next;
+            },
+            saveIntegration: (value: unknown) => {
+              device.requireService();
+              return settings.saveIntegration(value);
+            },
+            removeIntegration: (value: unknown) => {
+              device.requireService();
+              return settings.removeIntegration(value);
+            },
             deviceStatus: () => device.status(),
             unlock: (value: unknown) => {
               const input = object(value, ["locale"]);
@@ -288,7 +308,17 @@ export function runDesktop(
                       : BigInt(handle.readUInt32LE())
                     ).toString()
                   : "0";
-              return device.unlock(number, input.locale as "zh-CN" | "en-US");
+              return device
+                .unlock(number, input.locale as "zh-CN" | "en-US")
+                .then((user) => {
+                  // Corrupt settings never weaken the default ten-minute lock policy or get reset.
+                  try {
+                    device.setIdleMinutes(settings.get().idleMinutes);
+                  } catch {
+                    device.setIdleMinutes(10);
+                  }
+                  return user;
+                });
             },
             currentUser: () => device.currentUser(),
             logout: () => device.lock(),
@@ -313,6 +343,9 @@ export function runDesktop(
                   throw new AppError(403, "Untrusted caller.");
                 const needsArgument = [
                   "unlock",
+                  "saveSecurity",
+                  "saveIntegration",
+                  "removeIntegration",
                   "billPage",
                   "createBill",
                 ].includes(key);

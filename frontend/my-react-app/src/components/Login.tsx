@@ -9,6 +9,7 @@ import {
   logout,
 } from "../services/api";
 import type { DeviceStatus } from "../../../../shared/desktop";
+import { waitForUnlock } from "../lib/motion";
 import { safeReturnPath } from "../security/validation";
 import Brand from "./ui/Brand";
 import ThemeControl from "./ui/ThemeControl";
@@ -21,6 +22,7 @@ export default function Login() {
   const [status, setStatus] = useState<DeviceStatus | null>(null),
     [checking, setChecking] = useState(true),
     [loading, setLoading] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
   const request = useRef<AbortController | null>(null),
     submitting = useRef(false);
@@ -64,11 +66,21 @@ export default function Login() {
     if (submitting.current || !available) return;
     submitting.current = true;
     setLoading(true);
+    setVerified(false);
     setFailure(null);
     const controller = new AbortController();
     request.current = controller;
     try {
-      if (await unlockDevice(locale, controller.signal))
+      if (
+        await unlockDevice(
+          locale,
+          controller.signal,
+          async (verificationSignal) => {
+            setVerified(true);
+            await waitForUnlock(verificationSignal);
+          },
+        )
+      )
         navigate(safeReturnPath(location.state), { replace: true });
     } catch (error) {
       if (
@@ -78,11 +90,25 @@ export default function Login() {
         setFailure(captureError(error));
     } finally {
       submitting.current = false;
-      if (!controller.signal.aborted) setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setVerified(false);
+      }
     }
   }
   return (
-    <div className="unlock-page">
+    <div
+      className="unlock-page"
+      data-phase={
+        verified
+          ? "verified"
+          : loading
+            ? "verifying"
+            : failure
+              ? "error"
+              : "idle"
+      }
+    >
       <header className="unlock-header">
         <Brand />
         <div className="unlock-controls">
@@ -144,11 +170,15 @@ export default function Login() {
         </section>
         <section className="unlock-card" aria-labelledby="unlock-title">
           <div className="unlock-symbol">
-            <Icon name="fingerprint" />
+            <Icon name={verified ? "check" : "fingerprint"} />
           </div>
           <p className="unlock-card-eyebrow">{t("device.cardEyebrow")}</p>
-          <h2 id="unlock-title">{t("device.title")}</h2>
-          <p className="unlock-description">{t("device.description")}</p>
+          <h2 id="unlock-title">
+            {t(verified ? "config.verified" : "device.title")}
+          </h2>
+          <p className="unlock-description">
+            {t(verified ? "config.opening" : "device.description")}
+          </p>
           <div className="unlock-method">
             <span className="unlock-method-icon">
               <Icon
@@ -196,7 +226,7 @@ export default function Login() {
             {loading ? (
               <>
                 <span className="spinner" />
-                {t("device.verifying")}
+                {t(verified ? "config.opening" : "device.verifying")}
               </>
             ) : (
               <>

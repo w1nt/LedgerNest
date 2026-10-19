@@ -8,7 +8,6 @@ export interface SessionVault {
   close(): void;
 }
 
-const IDLE_MS = 10 * 60_000;
 const MAX_SESSION_MS = 8 * 3_600_000;
 
 /** Native verification is injected by the entry point, never by the renderer. */
@@ -17,6 +16,7 @@ export class DeviceSession {
   private service?: LocalService;
   private generation = 0;
   private pending?: AbortController;
+  private idleMinutes = 10;
   private unlockedAt = 0;
   private touchedAt = 0;
   private readonly authenticator: DeviceAuthenticator;
@@ -93,16 +93,22 @@ export class DeviceSession {
     return this.service;
   }
 
+  setIdleMinutes(minutes: number) {
+    if (![5, 10, 15, 30].includes(minutes))
+      throw new AppError(400, "Invalid idle timeout.");
+    this.idleMinutes = minutes;
+  }
   private expired(now: number) {
     return (
-      now - this.touchedAt >= IDLE_MS || now - this.unlockedAt >= MAX_SESSION_MS
+      now - this.touchedAt >= this.idleMinutes * 60_000 ||
+      now - this.unlockedAt >= MAX_SESSION_MS
     );
   }
 
   checkExpiry(systemIdleSeconds: number) {
     if (
       this.service &&
-      (systemIdleSeconds >= 600 || this.expired(this.clock()))
+      (systemIdleSeconds >= this.idleMinutes * 60 || this.expired(this.clock()))
     )
       this.lock();
   }

@@ -17,6 +17,8 @@ export function captureError(error: unknown): ValidationError | BackendFailure {
     return error;
   if (error instanceof DesktopRequestError) {
     const keys = {
+      SETTINGS_INVALID: "config.invalid",
+      SETTINGS_UNAVAILABLE: "config.unavailableError",
       AUTH_CANCELED: "device.errorCanceled",
       AUTH_DENIED: "device.errorDenied",
       AUTH_BUSY: "device.errorBusy",

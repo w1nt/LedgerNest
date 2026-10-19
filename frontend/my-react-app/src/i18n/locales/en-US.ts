@@ -1,26 +1,142 @@
 import type { Messages } from "../types.ts";
 
 const enUS = {
+  "config.general": "Appearance",
+  "config.connections": "APIs & connections",
+  "config.security": "Privacy & security",
+  "config.data": "Data & backups",
+  "config.localOnly": "ON THIS DEVICE",
+  "config.intro":
+    "A workspace that feels like yours. Choose your preferences and keep control of where your data goes.",
+  "config.railNote":
+    "Your device. Your configuration. Keys are never uploaded to the project author.",
+  "config.experience": "Display & interaction",
+  "config.themeNote": "Choose a light or dark look, or match your device.",
+  "config.density": "Interface density",
+  "config.densityNote":
+    "Adjust spacing in lists and forms without changing your data.",
+  "config.comfortable": "Comfortable",
+  "config.compact": "Compact",
+  "config.motion": "Motion",
+  "config.motionNote":
+    "Your system’s reduced-motion preference always takes priority.",
+  "config.motionSystem": "Follow system",
+  "config.motionReduce": "Reduce motion",
+  "config.profileNote":
+    "This local profile belongs to the current device user. No separate login password is needed.",
+  "config.demoNote":
+    "You are exploring sample data. Appearance preferences work here; unlock your local workspace to save API credentials or security settings.",
+  "config.savedNotice": "Settings saved on this device.",
+  "config.integrationNote":
+    "Save the configuration for future integrations. Bank authorization, transaction sync and AI requests are not connected yet. Saving makes no API requests and incurs no API usage charges.",
+  "config.stored": "Saved · Not connected",
+  "config.notConfigured": "Not configured",
+  "config.optional": "Optional",
+  "config.plaidDescription":
+    "Use your own Plaid developer credentials. Planned access covers accounts and transactions, without payments or direct debits.",
+  "config.environment": "Environment",
+  "config.bankPending": "Bank authorization & sync coming later",
+  "config.aiTitle": "AI analysis assistant",
+  "config.aiDescription":
+    "Keep a place for your own AI provider. Core calculations work independently; future requests will explain which data is sent.",
+  "config.aiPending": "AI requests coming later",
+  "config.provider": "Provider",
+  "config.model": "Model ID",
+  "config.notSet": "Not set",
+  "config.configure": "Configure",
+  "config.edit": "Edit configuration",
+  "config.remove": "Remove",
+  "config.secretPolicy":
+    "Credentials are encrypted locally. After saving, only a prefix and suffix are shown, without reveal or copy controls.",
+  "config.masked": "Masked credential. Copying is disabled.",
+  "config.editPlaid": "Configure Plaid",
+  "config.editAI": "Configure AI service",
+  "config.keepExisting":
+    "Stored credentials are never loaded into these fields. Leave them blank to keep existing values, or enter replacements. Changing environment or service address requires the matching credentials again.",
+  "config.enterCredentials":
+    "Paste your own developer credentials. This only saves configuration; no service is verified or called.",
+  "config.keepPlaceholder": "Leave blank to keep saved value",
+  "config.pasteCredential": "Paste credential",
+  "config.plaidScope":
+    "Sandbox uses simulated data. Trial uses Production. Use the Secret for that environment, never your bank account or bank password.",
+  "config.customProvider": "Custom · OpenAI compatible",
+  "config.modelPlaceholder": "Enter the provider’s model ID",
+  "config.aiPrivacy":
+    "No financial records are sent to AI today. You will control future data sharing and API usage costs.",
+  "config.cancel": "Cancel",
+  "config.save": "Save configuration",
+  "config.saving": "Saving…",
+  "config.protection": "Workspace protection",
+  "config.deviceAuth": "Device authentication",
+  "config.available": "Ready",
+  "config.unavailable": "Not ready",
+  "config.autoLock": "Automatic lock",
+  "config.autoLockNote":
+    "Lock after this period without application data access or device activity. System lock and sleep also lock the app. Each unlock lasts at most 8 hours.",
+  "config.minutes": "{count} minutes",
+  "config.encryption": "Local encryption",
+  "config.encryptionNote":
+    "Financial records use encrypted SQLite. API credentials use the OS credential protection service.",
+  "config.encrypted": "Encrypted",
+  "config.demoStorage": "Sample data",
+  "config.dataTitle": "Your data stays yours",
+  "config.localStorage": "Data location",
+  "config.localStorageNote":
+    "Records stay on this device, without a service hosted by the project author.",
+  "config.onDevice": "On this device",
+  "config.portableBackup": "Portable encrypted backup",
+  "config.backupNote":
+    "A local command-line backup tool is available. In-app backup and restore controls are planned.",
+  "config.backupInstructions":
+    "Use storage:backup / storage:restore from the project directory for passphrase-encrypted backups. Close the app first. Restore only writes to a new database path.",
+  "config.credentialsBackupNote":
+    "Existing portable backups include the financial database, not this device’s API settings. Re-enter credentials on a new device.",
+  "config.cloudBackup": "Back up to your own cloud",
+  "config.cloudNote":
+    "User-selected cloud storage and cross-device recovery are planned. No cloud service is connected today.",
+  "config.planned": "Planned",
+  "config.version": "App version",
+  "config.about":
+    "A free, open-source local finance tool. Bank transactions and AI are planned. No payments, direct debits or fund transfers are provided.",
+  "config.removeTitle": "Remove local API configuration?",
+  "config.removeNote":
+    "Clear this service’s credentials and settings from this device. This does not revoke authorization at the provider or delete financial records. You can configure it again later.",
+  "config.removeConfirm": "Remove configuration",
+  "config.invalid":
+    "Check the configuration. Changing the environment, provider or address requires the matching credentials again.",
+  "config.unavailableError":
+    "Local settings could not be read or saved. Check OS credential storage and file permissions. Existing configuration is never reset automatically.",
+  "config.verified": "Verified",
+  "config.opening": "Opening your local workspace…",
+  "config.retry": "Reload settings",
+  "config.loading": "Reading local settings…",
+
   "device.eyebrow": "LOCAL FIRST · PERSONALLY YOURS",
   "device.storyFirst": "A little clarity.",
   "device.storySecond": "A space of your own.",
-  "device.storyCopy": "Your everyday finances, thoughtfully organized. Saved on your device, ready when you are.",
+  "device.storyCopy":
+    "Your everyday finances, thoughtfully organized. Saved on your device, ready when you are.",
   "device.cardEyebrow": "YOUR PRIVATE WORKSPACE",
   "device.title": "Welcome back.",
-  "device.description": "Use your device to unlock your local records. No separate account or password to remember.",
+  "device.description":
+    "Use your device to unlock your local records. No separate account or password to remember.",
   "device.windows": "Windows Hello",
   "device.macos": "Touch ID or Mac password",
   "device.method": "Device authentication",
   "device.checking": "Checking device authentication…",
   "device.ready": "Ready to verify with your device",
   "device.needsAttention": "Device verification needs attention",
-  "device.notConfigured": "Set up a PIN or Windows Hello in Windows sign-in options, then check again.",
-  "device.unavailable": "System verification is unavailable. Check device sign-in settings. If system policy blocked the app component, use a trusted signed build. Your data remains locked.",
-  "device.desktopOnly": "Open the LedgerNest desktop app on Windows or macOS to unlock local data. You can explore sample data here.",
+  "device.notConfigured":
+    "Set up a PIN or Windows Hello in Windows sign-in options, then check again.",
+  "device.unavailable":
+    "System verification is unavailable. Check device sign-in settings. If system policy blocked the app component, use a trusted signed build. Your data remains locked.",
+  "device.desktopOnly":
+    "Open the LedgerNest desktop app on Windows or macOS to unlock local data. You can explore sample data here.",
   "device.unlock": "Unlock workspace",
   "device.verifying": "Waiting for device verification…",
   "device.checkAgain": "Check again",
-  "device.explanation": "Your device verifies you. Your records stay locked until it does.",
+  "device.explanation":
+    "Your device verifies you. Your records stay locked until it does.",
   "device.privacy": "Private by design. Your records stay with you.",
   "device.vaultLocked": "Locked",
   "device.localVault": "Your local vault",
@@ -29,10 +145,13 @@ const enUS = {
   "device.demo": "Explore sample data",
   "device.footer": "A calmer place for your finances.",
   "device.language": "Switch language",
-  "device.errorCanceled": "Verification was canceled. Your records are still locked.",
+  "device.errorCanceled":
+    "Verification was canceled. Your records are still locked.",
   "device.errorDenied": "Verification did not succeed. Please try again.",
-  "device.errorBusy": "A verification request is already open. Complete or cancel it first.",
-  "device.multipleProfiles": "This legacy database has multiple profiles. Separate them before enabling device unlock; no records were changed.",
+  "device.errorBusy":
+    "A verification request is already open. Complete or cancel it first.",
+  "device.multipleProfiles":
+    "This legacy database has multiple profiles. Separate them before enabling device unlock; no records were changed.",
   "device.profile": "Local profile",
   "device.systemProtection": "Device authentication protects this workspace.",
   "chart.total": "Total bills",
@@ -109,7 +228,8 @@ const enUS = {
   "auth.repeatPassword": "Enter your password again",
   "auth.creating": "Creating account…",
   "auth.hasAccount": "Already have an account?",
-  "session.expired": "Your workspace was locked. Verify with your device to continue.",
+  "session.expired":
+    "Your workspace was locked. Verify with your device to continue.",
   "session.otherWindow":
     "You signed out in another window. Please sign in again.",
   "status.unpaid": "Unpaid",
@@ -251,7 +371,8 @@ const enUS = {
   "demo.end": "End this demo",
   "auth.logout": "Lock workspace",
   "demo.endNote": "Come back anytime. The sample bills will be reset.",
-  "auth.logoutNote": "Close local records and require device verification to open them again.",
+  "auth.logoutNote":
+    "Close local records and require device verification to open them again.",
   "auth.signingOut": "Locking…",
   "demo.exit": "Exit demo",
   "profile.user": "Personal user",

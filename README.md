@@ -13,7 +13,8 @@ LedgerNest is a free, open-source project intended to run on your own computer. 
 | Bill lists, search, filters, creation, overview, and trend charts | Existing prototype |
 | Chinese and English interfaces, themes, shared dropdowns, and amount tooltips | Existing prototype |
 | Electron main/preload, SQLite and OS-authenticated local sessions | Implemented for the current UI; validated capability-based IPC |
-| User-provided Plaid credentials and Link authorization | Not implemented |
+| Plaid / AI configuration and secure credential editing | Implemented locally; saved configurations do not make API requests |
+| Plaid Link authorization | Not implemented |
 | Historical transaction imports, incremental syncing, and reconciliation | Not implemented |
 | Windows Hello / macOS device unlock | Adapter/UI implemented; Windows native acceptance blocked by local unsigned-code policy, macOS untested |
 | Encrypted embedded local storage | Implemented with SQLite3MultipleCiphers, OS-protected keys and passphrase backups |
@@ -34,7 +35,7 @@ The existing bill and settlement models are inherited prototype features, not a 
 
 ## Initial Roadmap
 
-1. Implement local configuration and secure credential storage to simplify setup and startup.
+1. Extend the implemented local configuration and secure credential editor into a guided first-run setup.
 2. Add Plaid Link authorization and persist accounts and connections to avoid creating duplicate connections.
 3. Introduce a separate bank transaction model. Use `/transactions/sync` with persisted cursors to handle pagination, additions, modifications, and removals.
 4. Reconcile pending and posted transactions, refunds, transfers, and credit card repayments to avoid double-counting income or expenses.
@@ -82,6 +83,27 @@ The build signs only the authentication helper using that certificate and requir
 
 The retained HTTP adapter and Java backend are migration references. `npm --prefix frontend/my-react-app run dev` can preview the new unlock screen and in-memory demo in a browser; device unlock requires Electron and stays disabled there. The shared UI no longer offers browser account/password login. Any direct regression work with `backend/SpringBoot_demo/start-local.ps1` must use a separate, disposable plaintext database and JDK 17+. The Java driver cannot open the encrypted desktop database. No Java or Vite process is part of normal desktop startup; desktop sessions use main-process memory rather than cookies.
 
+## Settings and API Configuration
+
+Settings now groups **Appearance**, **APIs & connections**, **Privacy & security**, and **Data & backups**. Theme/language, comfortable or compact density, and reduced motion work immediately. Non-sensitive display preferences are stored locally in the UI profile; they survive reloads. System reduced motion always takes priority. Automatic locking supports 5/10/15/30 minutes and updates the main-process policy; system lock/sleep and the 8-hour session cap remain enforced. The displayed app version comes from the root `VERSION` during the build.
+
+After unlocking, users can save their own configuration:
+
+| Service | Configurable fields | Current capability |
+| --- | --- | --- |
+| Plaid | Sandbox or Trial/Production, Client ID, environment-specific Secret | Local configuration only; bank Link and transaction sync are not connected |
+| AI | DeepSeek, OpenAI, Anthropic or a custom compatible provider; API base URL, model ID, API Key | Local configuration only; no AI request or data sharing |
+
+Trial uses Plaid's Production environment; it is not a separate API hostname. Use developer credentials rather than bank login credentials. Model IDs are entered by the user rather than assuming a permanently available model. Preset API addresses are fixed to their provider; custom addresses require HTTPS without embedded credentials, queries or fragments, literal IPs or local hostnames. This validates configuration syntax only; DNS/redirect/network restrictions will be required when actual integrations are implemented. See [Plaid API overview](https://plaid.com/docs/api/), [DeepSeek API](https://api-docs.deepseek.com/), [OpenAI API reference](https://platform.openai.com/docs/api-reference/introduction), and [Anthropic API overview](https://platform.claude.com/docs/en/api/overview).
+
+Credentials are never read back into the renderer. Main-process settings responses contain only four leading and four trailing characters separated by a fixed mask; short values are fully hidden. Stored summaries cannot be selected, dragged or copied through their controls. Entry fields are password inputs with copy/cut/context-menu/drag disabled and paste allowed; there is no reveal or copy button. They are cleared after saves/errors/closing/locking. Leaving a credential blank keeps the existing value. Changing Plaid environment/client identity or AI provider/address requires the matching new secret. Removing configuration requires confirmation and does not revoke provider authorization or delete records. These are UI protections, not protection against a debugger or software controlling the same OS account.
+
+Security/integration settings are stored next to each database in `<database>.settings`: an OS-protected encrypted envelope (CurrentUser DPAPI on Windows; safeStorage on supported macOS), with restricted file permissions and atomic encrypted writes. No plaintext staging file, key environment variable, API-key browser storage, arbitrary file IPC or read-secret method is provided. Configuration access requires an unlocked vault; malformed, tampered or unavailable storage is refused without resetting existing settings. The financial database remains schema v1 with its original ten tables. Settings, interrupted writes and screenshots are ignored by Git, including when the database has a custom basename.
+
+Existing portable backups contain **only the financial database**, not this machine-bound API settings file. Re-enter credentials after moving to another OS account/device. In-app backup controls and user-owned cloud recovery remain planned; nothing is uploaded. Demo mode allows display preferences, but cannot save real API credentials or security settings. The previously documented Windows unsigned-helper policy restriction still applies to native unlocking; this work does not bypass that restriction.
+
+Unlock now has an entrance, verification pulse and verified handoff. A lock event cancels the handoff before revealing protected pages. Shared cards, buttons, segmented controls, dropdowns and dialogs use common styles; dialog focus returns after unmount without scrolling. Both system and in-app reduced-motion settings disable decorative movement.
+
 ## Development and Validation
 
 - `desktop/`: Electron main/preload, TypeScript business services, SQLite access, isolated fixture tooling and desktop tests.
@@ -98,6 +120,7 @@ npm test
 npm run test:desktop
 npm run test:storage
 npm run test:native # real availability, hidden UI, no verification prompt
+npm run test:settings # isolated credential/settings and motion workflows
 npm --prefix frontend/my-react-app run lint
 npm --prefix frontend/my-react-app run test:security
 npm --prefix frontend/my-react-app run test:i18n
@@ -108,11 +131,11 @@ python -m unittest discover -s scripts/tests -v
 
 Unit tests and the real Electron integration test use temporary databases and profiles. The tests inject verification through a separate executable built under ignored `.local-tools/device-auth-tests/`; the production entry always selects the native verifier and has no test-authentication environment bypass. Automated verification fixtures do not prove a human Windows Hello / macOS prompt has succeeded. The Electron test keeps windows hidden and verifies unlock cancellation, database access gating, manual/OS locking, totals, six chart bars, creation through the UI, restart persistence, isolated renderer capabilities, rejected foreign IPC callers, abrupt-exit recovery with a fresh Chromium profile, and absence of HTTP API requests. To verify an existing example database without modifying it, set `LEDGERNEST_VERIFY_SOURCE=data/ledgernest.sqlite` for `npm run test:desktop`; the closed encrypted database and its OS-protected key file are copied to an isolated test directory. Close every app using the source first; a live lock or nonempty WAL causes this check to refuse the copy. This fixture-specific check expects the original 32 examples and October 2026 summary.
 
-Desktop requests follow **React → restricted preload bridge → validated main-frame IPC → local business service → SQLite**. The bridge exposes device availability, unlock, current profile, lock, paginated bills, bill creation and a lock notification; account registration/password login are not exposed. Renderer code has no Node integration, SQL, file paths, OS credentials, database keys or arbitrary IPC access. The sandbox, context isolation, restrictive CSP, custom application protocol, navigation checks, parameterized SQL, integer cents and transactional idempotency apply to this workflow.
+Desktop requests follow **React → restricted preload bridge → validated main-frame IPC → local business service → SQLite**. The bridge exposes device availability, unlock, current profile, lock, paginated bills, bill creation, masked settings, security preferences, integration write/remove capabilities and a lock notification; account registration/password login are not exposed. Renderer code has no Node integration, SQL, file paths, OS credentials, database keys or arbitrary IPC access. The sandbox, context isolation, restrictive CSP, custom application protocol, navigation checks, parameterized SQL, integer cents and transactional idempotency apply to this workflow.
 
-A main-process `DeviceSession` requires native verification before unwrapping keys or opening/creating the database. Lock closes the SQLite handle, releases the file lock, clears the session and notifies React to remove protected pages. System lock, suspend and active-user changes lock the app; it also locks after 10 minutes without protected application access, 10 minutes of OS inactivity, or 8 hours since unlock. Expiry is checked on requests and every five seconds. Pending verification is canceled on lock, and late results cannot reopen the vault. Closing the app also locks it; a reload inside the same unlocked process retains the session. Device verification is an application access gate, not an OS-enforced requirement for every DPAPI/Keychain decryption; software already running as the same unlocked OS user remains outside this protection boundary.
+A main-process `DeviceSession` requires native verification before unwrapping keys or opening/creating the database. Lock closes the SQLite handle, releases the file lock, clears the session and notifies React to remove protected pages. System lock, suspend and active-user changes lock the app; it also locks after the configured 5, 10, 15 or 30 minutes without protected application access or OS activity (default 10 minutes), or 8 hours since unlock. Expiry is checked on requests and every five seconds. Pending verification is canceled on lock, and late results cannot reopen the vault. Closing the app also locks it; a reload inside the same unlocked process retains the session. Device verification is an application access gate, not an OS-enforced requirement for every DPAPI/Keychain decryption; software already running as the same unlocked OS user remains outside this protection boundary.
 
-Profile editing, preference APIs, bill editing/deletion and standalone summary/reminder/settlement operations are retained in Java and **not exposed by the desktop bridge yet**. Existing charts calculate from the locally loaded bills. No payment execution or bank-sync capability is provided.
+Profile editing, legacy Java preference APIs, bill editing/deletion and standalone summary/reminder/settlement operations are retained in Java and **not exposed by the desktop bridge yet**. Existing charts calculate from the locally loaded bills. No payment execution or bank-sync capability is provided.
 
 All components share the root `VERSION`; future development belongs to this repository. Its history is independent of the private prototype repository. Existing frontend and backend development logs remain local and are excluded by `.gitignore`. Public updates belong in README files. API credentials, local databases, backups and build artifacts must not be committed.
 

@@ -196,20 +196,16 @@ function ShellContent() {
         </main>
       </div>
       {popup === "profile" && (
-        <Modal title={t("profile.title")} onClose={() => setPopup(null)}>
+        <Modal title={t("device.profile")} onClose={() => setPopup(null)}>
           <div className="profile-summary">
             <span className="avatar large">{name.slice(0, 1)}</span>
             <h3>{name}</h3>
-            <p>{isDemo ? t("demo.active") : user?.email}</p>
+            <p>{isDemo ? t("demo.active") : t("device.systemProtection")}</p>
           </div>
           <dl className="detail-list">
             <div>
               <dt>{t("profile.space")}</dt>
               <dd>{t("nav.space")}</dd>
-            </div>
-            <div>
-              <dt>{t("field.address")}</dt>
-              <dd>{isDemo ? "—" : user?.address || t("common.notProvided")}</dd>
             </div>
           </dl>
           {sessionError && (

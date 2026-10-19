@@ -241,3 +241,50 @@ export async function unlockDevice(
     );
   return parseUser(await local(bridge.unlock({ locale }), signal, false));
 }
+
+export async function getSettings() {
+  const bridge = desktopBridge();
+  if (!bridge)
+    throw new DesktopRequestError(
+      409,
+      "Desktop settings are unavailable.",
+      "AUTH_DESKTOP_REQUIRED",
+    );
+  return local(bridge.settings());
+}
+export async function saveSecurity(
+  idleMinutes: import("../../../../shared/settings").IdleMinutes,
+) {
+  const bridge = desktopBridge();
+  if (!bridge)
+    throw new DesktopRequestError(
+      409,
+      "Desktop settings are unavailable.",
+      "AUTH_DESKTOP_REQUIRED",
+    );
+  return local(bridge.saveSecurity({ idleMinutes }));
+}
+export async function saveIntegration(
+  value: import("../../../../shared/settings").IntegrationUpdate,
+) {
+  const bridge = desktopBridge();
+  if (!bridge)
+    throw new DesktopRequestError(
+      409,
+      "Desktop settings are unavailable.",
+      "AUTH_DESKTOP_REQUIRED",
+    );
+  return local(bridge.saveIntegration(value));
+}
+export async function removeIntegration(
+  kind: import("../../../../shared/settings").IntegrationKind,
+) {
+  const bridge = desktopBridge();
+  if (!bridge)
+    throw new DesktopRequestError(
+      409,
+      "Desktop settings are unavailable.",
+      "AUTH_DESKTOP_REQUIRED",
+    );
+  return local(bridge.removeIntegration({ kind }));
+}

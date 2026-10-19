@@ -53,3 +53,12 @@ __pycache__/
 *.sqlite.encrypting-*
 *.db.lock/
 *.sqlite3.lock/
+
+# OS-encrypted per-vault settings and interrupted atomic writes
+*.sqlite.settings*
+*.db.settings*
+*.sqlite3.settings*
+
+# Also cover custom database basenames without a SQLite extension
+*.settings
+*.settings.writing-*

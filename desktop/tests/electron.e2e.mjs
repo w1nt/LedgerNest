@@ -106,6 +106,10 @@ try {
       "logout",
       "onLocked",
       "unlock",
+      "settings",
+      "saveSecurity",
+      "saveIntegration",
+      "removeIntegration",
     ].sort(),
   });
   const security = await app.evaluate(({ BrowserWindow }) => {
@@ -314,6 +318,7 @@ try {
   assert.equal(saved.amount, "12.34");
   assert.equal(saved.settlementStatus, "unpaid");
   await page.goto("ledgernest://app/home/settings");
+  await page.locator("#setting-tab-security").click();
   await page.locator(".logout-panel button").click();
   await page.waitForURL((url) => ["/", "/login"].includes(url.pathname));
   assert.equal(

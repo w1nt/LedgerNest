@@ -223,3 +223,115 @@
     transform: none;
   }
 }
+
+/* Consistent handoff and interaction feedback. Locking never waits for an animation. */
+.unlock-header,
+.unlock-footer {
+  animation: surface-enter 400ms var(--motion-ease) both;
+}
+.unlock-story {
+  animation: surface-enter 520ms var(--motion-ease) 70ms both;
+}
+.unlock-card {
+  animation: unlock-card-enter 540ms var(--motion-ease) 140ms both;
+}
+.unlock-symbol {
+  position: relative;
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast);
+}
+.unlock-symbol::after {
+  content: "";
+  position: absolute;
+  inset: -0.3rem;
+  border: 1px solid var(--accent);
+  border-radius: 1.2rem;
+  opacity: 0;
+  pointer-events: none;
+}
+.unlock-page[data-phase="verifying"] .unlock-symbol::after {
+  animation: verification-pulse 1.5s ease-out infinite;
+}
+.unlock-page[data-phase="verifying"] .unlock-symbol > .icon {
+  animation: verification-breathe 1.5s ease-in-out infinite;
+}
+.unlock-page[data-phase="verified"] .unlock-symbol > .icon {
+  animation: verified-check 360ms var(--motion-ease);
+}
+.unlock-page[data-phase="error"] .unlock-error {
+  animation: value-reveal 180ms var(--motion-ease);
+}
+.settings-tab-content {
+  animation: surface-enter 240ms var(--motion-ease);
+}
+.settings-save-notice {
+  animation: surface-enter 200ms var(--motion-ease);
+}
+.settings-tabs > button,
+.segmented-control > button,
+.unlock-language,
+.unlock-demo button,
+.unlock-recheck {
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast),
+    border-color var(--motion-fast),
+    transform var(--motion-fast) var(--motion-ease);
+}
+.settings-tabs > button:active,
+.segmented-control > button:active {
+  transform: scale(0.98);
+}
+@keyframes unlock-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes verification-pulse {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+@keyframes verification-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes verified-check {
+  from {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+:root[data-motion="reduce"] .metric-card:hover,
+:root[data-motion="reduce"] .landing-preview,
+:root[data-motion="reduce"] .landing-preview:hover,
+:root[data-motion="reduce"] .brand:hover .brand-mark {
+  transform: none;
+}

@@ -22,6 +22,16 @@ export type Reply<T> =
   | { ok: true; value: T }
   | { ok: false; error: { status: number; message: string; code?: string } };
 export interface DesktopBridge {
+  settings(): Promise<Reply<import("./settings.ts").SettingsSnapshot>>;
+  saveSecurity(value: {
+    idleMinutes: import("./settings.ts").IdleMinutes;
+  }): Promise<Reply<import("./settings.ts").SettingsSnapshot>>;
+  saveIntegration(
+    value: import("./settings.ts").IntegrationUpdate,
+  ): Promise<Reply<import("./settings.ts").SettingsSnapshot>>;
+  removeIntegration(value: {
+    kind: import("./settings.ts").IntegrationKind;
+  }): Promise<Reply<import("./settings.ts").SettingsSnapshot>>;
   deviceStatus(): Promise<Reply<DeviceStatus>>;
   unlock(value: { locale: "zh-CN" | "en-US" }): Promise<Reply<User>>;
   onLocked(listener: () => void): () => void;

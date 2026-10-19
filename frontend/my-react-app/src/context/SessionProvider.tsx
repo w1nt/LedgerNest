@@ -157,7 +157,11 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
       setUser(next);
     });
   }
-  async function unlockDevice(locale: "zh-CN" | "en-US", signal?: AbortSignal) {
+  async function unlockDevice(
+    locale: "zh-CN" | "en-US",
+    signal?: AbortSignal,
+    onVerified?: (signal: AbortSignal) => Promise<void>,
+  ) {
     verification.current?.abort();
     const controller = new AbortController(),
       attempt = revision.current;
@@ -167,6 +171,9 @@ export default function SessionProvider({ children }: { children: ReactNode }) {
     if (signal?.aborted) controller.abort();
     try {
       const next = await requestDeviceUnlock(locale, controller.signal);
+      if (controller.signal.aborted || attempt !== revision.current)
+        return false;
+      await onVerified?.(controller.signal);
       if (controller.signal.aborted || attempt !== revision.current)
         return false;
       signIn(next);

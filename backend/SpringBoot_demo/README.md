@@ -1,5 +1,13 @@
 # LedgerNest 后端（Java 迁移参考）
 
+## 本地设置与 API 凭据 — 2026-10-18
+
+新业务在 desktop/settings.ts 与 shared/settings.ts 实现，Java 参考代码与十表 SQLite schema v1 不变。受限 IPC 新增 settings / saveSecurity / saveIntegration / removeIntegration，均要求 DeviceSession 已解锁；读取只返回凭据前四/后四遮罩，没有明文读取或任意路径接口。可配置 Plaid 环境/Client ID/Secret 和可选 AI 服务商/HTTPS 地址/模型/API Key；不会调用外部 API、授权银行或发送金融数据。
+
+凭据与锁定配置存放于数据库旁 .settings 的 OS 加密包装中，Windows CurrentUser DPAPI/macOS safeStorage；私有 ACL/权限、加密临时文件、同步/原子替换、大小/格式/链接检查与受控错误生效，损坏文件不重置。新配置与临时文件被 Git 忽略；便携 DB 备份当前不包含机器绑定的配置，跨设备需重填。改环境、Client ID 或 AI 服务商/地址时需要相应新 secret，不能把旧 secret 自动用于新地址。自定义地址仅做格式约束，后续真正联网时仍须落实 DNS/重定向/网络边界。
+
+自动锁定时长支持 5/10/15/30 分钟并持久化，登录后加载，更新立即生效；损坏配置时保守使用默认 10 分钟且不重置文件。系统锁屏/休眠/8 小时上限、验证竞态与数据库加密不变。API 明文输入只在用户输入和一次性写入请求中存在，锁定卸载表单；渲染进程不获取旧密钥。仍未解决当前 Windows 未签名 helper 的系统策略拦截，也未声称 Mac 实机验证通过。
+
 当前版本为 `0.1.0-SNAPSHOT`，由根目录 `VERSION` 和 `scripts/sync-version.mjs` 管理。目录名与 Java 包名暂沿用原型，以控制迁移范围。
 
 ## 系统身份验证 — 2026-10-18

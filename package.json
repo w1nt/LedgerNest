@@ -19,7 +19,8 @@
     "storage:backup": "npm run build:desktop && node scripts/storage.mjs backup",
     "storage:restore": "npm run build:desktop && node scripts/storage.mjs restore",
     "test:storage": "npm run build:desktop && node scripts/build-desktop-tests.mjs && node desktop/tests/storage-cli.e2e.mjs",
-    "test:native": "npm run build && node scripts/build-desktop-tests.mjs && node desktop/tests/native-availability.e2e.mjs"
+    "test:native": "npm run build && node scripts/build-desktop-tests.mjs && node desktop/tests/native-availability.e2e.mjs",
+    "test:settings": "npm run build && node scripts/build-desktop-tests.mjs && node desktop/tests/settings.e2e.mjs"
   },
   "devDependencies": {
     "@types/node": "24.12.0",

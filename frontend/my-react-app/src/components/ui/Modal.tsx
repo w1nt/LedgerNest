@@ -1,3 +1,4 @@
+import { reducedMotion } from "../../lib/motion";
 import { useI18n } from "../../i18n/LanguageContext";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -8,22 +9,26 @@ export default function Modal({
   title,
   onClose,
   children,
+  preventClose = false,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  preventClose?: boolean;
 }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const restoreTarget = useRef<HTMLElement | null>(null);
+  const restoreContainer = useRef<HTMLElement | null>(null);
   const [closing, setClosing] = useState(false);
   const closeRequested = useRef(false);
   const closeTimer = useRef<number | undefined>(undefined);
   function requestClose() {
-    if (closeRequested.current) return;
+    if (preventClose || closeRequested.current) return;
     closeRequested.current = true;
     // 减少动态效果时立即关闭；其余情况保持原生模态/焦点限制直到退场结束。
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (reducedMotion()) {
       onClose();
       return;
     }
@@ -32,14 +37,32 @@ export default function Modal({
   }
   useLayoutEffect(() => {
     const dialog = ref.current;
-    const trigger = document.activeElement;
+    if (
+      !restoreTarget.current &&
+      document.activeElement instanceof HTMLElement
+    ) {
+      restoreTarget.current = document.activeElement;
+      restoreContainer.current = document.activeElement.parentElement;
+    }
+    const trigger = restoreTarget.current;
     dialog?.showModal();
     return () => {
       window.clearTimeout(closeTimer.current);
       dialog?.close();
       // React 会移除弹窗节点，不能仅依赖浏览器关闭后的自动焦点恢复。
-      if (trigger instanceof HTMLElement && trigger.isConnected)
-        trigger.focus();
+      // Restore after React removes the native dialog, without scrolling the page.
+      queueMicrotask(() => {
+        if (document.querySelector("dialog[open]")) return;
+        const target =
+          trigger?.isConnected && !trigger.matches(":disabled")
+            ? trigger
+            : restoreContainer.current?.isConnected
+              ? restoreContainer.current.querySelector<HTMLElement>(
+                  'button:not(:disabled),a[href],[tabindex="0"]',
+                )
+              : null;
+        target?.focus({ preventScroll: true });
+      });
     };
   }, []);
   return (
@@ -72,6 +95,7 @@ export default function Modal({
         <IconButton
           icon="close"
           label={t("modal.close")}
+          disabled={preventClose}
           onClick={requestClose}
         />
       </div>
