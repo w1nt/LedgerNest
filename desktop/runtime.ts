@@ -6,6 +6,7 @@ import {
   protocol,
   session,
   powerMonitor,
+  shell,
 } from "electron";
 import { access, readFile } from "node:fs/promises";
 import { resolve, extname, relative, isAbsolute } from "node:path";
@@ -14,6 +15,9 @@ import { osProtector } from "./os-protector.ts";
 import { seedExample } from "./fixtures.ts";
 import { createBackup, restoreBackup } from "./backup.ts";
 import { readFileSync } from "node:fs";
+import { CloudSync, cloudDependencies, type CloudDependencies } from "./cloud.ts";
+import { DataTools } from "./data-tools.ts";
+import { DataLocation } from "./data-location.ts";
 import { SettingsStore } from "./settings.ts";
 import { DeviceSession } from "./device-session.ts";
 import type { DeviceAuthenticator } from "./device-auth.ts";
@@ -29,6 +33,7 @@ export function runDesktop(
     hidden?: boolean;
     profile?: string;
     systemIdleSeconds?: () => number;
+    cloudDependencies?: (standard: CloudDependencies) => CloudDependencies;
   },
 ) {
   protocol.registerSchemesAsPrivileged([
@@ -51,6 +56,8 @@ export function runDesktop(
     app.setPath("userData", options.profile);
   }
   let deviceSession: DeviceSession | undefined;
+  let dataTools: DataTools | undefined;
+  let cloudSync: CloudSync | undefined;
   let vault: ReturnType<typeof openVault> | undefined;
   const storageArg = process.argv.find((arg) =>
     arg.startsWith("--ledgernest-storage="),
@@ -80,6 +87,7 @@ export function runDesktop(
             : resolve(root, "data/ledgernest.sqlite");
         // Storage stays closed until verification; openVault validates the schema before exposing data.
         const schema = resolve(directory, "schema.sql");
+        const location = new DataLocation(dbPath, osProtector);
         if (storageCommand) {
           if (
             !["seed", "encrypt", "backup", "restore"].includes(storageCommand)
@@ -117,7 +125,7 @@ export function runDesktop(
             );
             console.log("Encrypted backup restored to the new database.");
           } else {
-            vault = openVault(dbPath, schema, osProtector);
+            vault = openVault(location.activePath(), schema, osProtector);
             const store = vault.store;
             if (storageCommand === "seed")
               console.log(await seedExample(store));
@@ -152,9 +160,11 @@ export function runDesktop(
         const settings = new SettingsStore(dbPath + ".settings", osProtector);
         const device = new DeviceSession(
           auth,
-          () => openVault(dbPath, schema, osProtector),
+          () => openVault(location.activePath(), schema, osProtector),
           owner,
           () => {
+            dataTools?.cancel();
+            cloudSync?.locked();
             if (window && !window.isDestroyed())
               window.webContents.send("device:locked");
           },
@@ -184,6 +194,8 @@ export function runDesktop(
           }
         }, 5000);
         expiry.unref();
+        const cloudTimer = setInterval(() => { void cloudSync?.tick(); }, 60000);
+        cloudTimer.unref();
         const assets = resolve(root, "frontend/my-react-app/dist");
         await access(resolve(assets, "index.html"));
         await access(resolve(directory, "preload.cjs"));
@@ -276,7 +288,65 @@ export function runDesktop(
             },
           });
           window = win;
+          const handle = win.getNativeWindowHandle();
+          const number = process.platform === "win32"
+            ? (handle.length === 8 ? handle.readBigUInt64LE() : BigInt(handle.readUInt32LE())).toString()
+            : "0";
+          const tools = new DataTools(location, device, schema, osProtector, {
+            directory: async () => {
+              const result = await dialog.showOpenDialog(win, { properties: ["openDirectory", "createDirectory"] });
+              return result.canceled ? undefined : result.filePaths[0];
+            },
+            save: async (extension, directory) => {
+              const result = await dialog.showSaveDialog(win, {
+                ...(directory ? { defaultPath: directory + "/" } : {}),
+                filters: [{ name: extension.toUpperCase(), extensions: [extension] }],
+                properties: ["createDirectory", "showOverwriteConfirmation", "dontAddToRecent"],
+              });
+              return result.canceled ? undefined : result.filePath;
+            },
+            open: async () => {
+              const result = await dialog.showOpenDialog(win, { properties: ["openFile", "dontAddToRecent"], filters: [{ name: "LedgerNest", extensions: ["lnbackup"] }] });
+              return result.canceled ? undefined : result.filePaths[0];
+            },
+            confirmRestore: async (records, locale) => {
+              const zh = locale === "zh-CN";
+              const result = await dialog.showMessageBox(win, {
+                type: "warning",
+                title: zh ? "恢复备份" : "Restore backup",
+                message: zh ? `已验证备份包含 ${records} 条记录。切换到此备份？` : `Verified backup contains ${records} records. Switch to this backup?`,
+                detail: zh ? "恢复采用替换当前数据的方式，不合并记录。当前数据库文件会保留在本机。恢复后需要重新解锁。API 配置不在备份中。" : "This replaces the active records without merging. Previous database files remain on this device. Unlock again after restoring. API configuration is not included.",
+                buttons: zh ? ["取消", "恢复"] : ["Cancel", "Restore"],
+                defaultId: 0, cancelId: 0, noLink: true,
+              });
+              return result.response === 1;
+            },
+          }, (locale, signal) => auth.verify(number, locale, signal));
+          dataTools = tools;
+          const standardCloud = cloudDependencies(async () => {
+            const result = await dialog.showOpenDialog(win, { properties: ["openFile", "dontAddToRecent"], filters: [{ name: "Google Desktop OAuth JSON", extensions: ["json"] }] });
+            return result.canceled ? undefined : result.filePaths[0];
+          }, async () => {
+            const result = await dialog.showSaveDialog(win, { filters: [{ name: "LedgerNest", extensions: ["lnbackup"] }], properties: ["createDirectory", "showOverwriteConfirmation", "dontAddToRecent"] });
+            return result.canceled ? undefined : result.filePath;
+          }, url => shell.openExternal(url));
+          const cloud = new CloudSync(dbPath + ".cloud-settings", osProtector, device, tools, options.cloudDependencies ? options.cloudDependencies(standardCloud) : standardCloud);
+          cloudSync = cloud;
           const operations = {
+            cloudState: () => cloud.state(),
+            cloudImport: () => cloud.importClient(),
+            cloudConnect: () => cloud.connect(),
+            cloudSave: (value: unknown) => cloud.save(value),
+            cloudSync: () => cloud.sync(),
+            cloudDisconnect: () => cloud.disconnect(),
+            cloudList: () => cloud.list(),
+            cloudDownload: (value: unknown) => cloud.download(value),
+            cloudCancel: () => { device.requireService(); cloud.cancel(); return null; },
+            backupLocation: () => tools.state(),
+            chooseBackupDirectory: () => tools.chooseDirectory(),
+            backupData: (value: unknown) => tools.backup(value),
+            exportRecords: (value: unknown) => tools.export(value),
+            restoreData: (value: unknown) => tools.restore(value),
             settings: () => {
               device.requireService();
               return settings.get();
@@ -297,6 +367,7 @@ export function runDesktop(
             },
             deviceStatus: () => device.status(),
             unlock: (value: unknown) => {
+              if (tools.busy) throw new AppError(409, "Data operation in progress.", "DATA_BUSY");
               const input = object(value, ["locale"]);
               if (!["zh-CN", "en-US"].includes(String(input.locale)))
                 throw new AppError(400, "Invalid locale.");
@@ -317,6 +388,7 @@ export function runDesktop(
                   } catch {
                     device.setIdleMinutes(10);
                   }
+                  void cloud.tick();
                   return user;
                 });
             },
@@ -343,6 +415,11 @@ export function runDesktop(
                   throw new AppError(403, "Untrusted caller.");
                 const needsArgument = [
                   "unlock",
+                  "cloudSave",
+                  "cloudDownload",
+                  "backupData",
+                  "exportRecords",
+                  "restoreData",
                   "saveSecurity",
                   "saveIntegration",
                   "removeIntegration",
@@ -399,6 +476,7 @@ export function runDesktop(
       if (process.platform !== "darwin") app.quit();
     });
     app.on("will-quit", () => {
+      cloudSync?.stop();
       try {
         deviceSession?.lock();
         vault?.close();

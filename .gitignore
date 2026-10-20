@@ -62,3 +62,15 @@ __pycache__/
 # Also cover custom database basenames without a SQLite extension
 *.settings
 *.settings.writing-*
+
+# Local backup locations, recovery selectors, interrupted snapshots and plaintext exports
+*.data-settings*
+*.restores/
+.backup-*/
+/exports/
+
+# OS-protected cloud OAuth tokens, backup passphrases and encrypted upload staging
+*.cloud-settings*
+.cloud-*/
+client_secret*.json
+credentials.json

@@ -595,3 +595,24 @@
     flex: 1;
   }
 }
+
+.data-directory { display: grid; gap: 8px; padding: 16px; margin-bottom: 18px; border: 1px solid var(--border); border-radius: 12px; }
+.data-directory > span { font-size: 12px; color: var(--muted); }
+.data-directory code { overflow-wrap: anywhere; font-size: 13px; }
+.data-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.data-confirm { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.7; }
+.data-confirm input[type="checkbox"] { width: 1rem; height: 1rem; min-height: 0; padding: 0; margin: 0.25rem 0 0; flex: 0 0 1rem; accent-color: var(--accent); }
+.data-success { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; overflow-wrap: anywhere; }
+.data-success .icon { flex: 0 0 auto; }
+
+.cloud-status { display: grid; gap: 12px; margin: 20px 0; font-size: 13px; }
+.cloud-status > div { display: flex; justify-content: space-between; gap: 16px; }
+.cloud-status dt { color: var(--muted); }
+.cloud-status dd { margin: 0; text-align: right; }
+.cloud-files { display: grid; gap: 12px; margin-top: 16px; }
+.cloud-file { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 12px; border-bottom: 1px solid var(--border); }
+.cloud-file > div { min-width: 0; display: grid; gap: 6px; }
+.cloud-file strong { font-size: 12px; overflow-wrap: anywhere; }
+.cloud-file span { font-size: 11px; color: var(--muted); }
+.cloud-file .button { flex-shrink: 0; }
+@media (max-width: 600px) { .cloud-file { align-items: flex-start; flex-direction: column; } .cloud-status > div { flex-direction: column; gap: 5px; } .cloud-status dd { text-align: left; } }

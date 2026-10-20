@@ -17,6 +17,22 @@ export function captureError(error: unknown): ValidationError | BackendFailure {
     return error;
   if (error instanceof DesktopRequestError) {
     const keys = {
+      CLOUD_AUTH: "cloud.error.auth",
+      CLOUD_NETWORK: "cloud.error.network",
+      CLOUD_QUOTA: "cloud.error.quota",
+      CLOUD_REMOTE: "cloud.error.remote",
+      CLOUD_CONFIG: "cloud.error.config",
+      CLOUD_CANCELED: "cloud.error.canceled",
+      DATA_RESTORE: "data.failedRestore",
+      DATA_CONFIG: "data.failedConfig",
+      DATA_PASSWORD: "data.badPassword",
+      DATA_PASSWORD_MATCH: "data.passwordMatch",
+      DATA_EXISTS: "data.exists",
+      DATA_CANCELED: "data.canceled",
+      DATA_BUSY: "data.busy",
+      DATA_EXTENSION: "data.extension",
+      DATA_DIRECTORY: "data.directoryError",
+      DATA_PLAINTEXT: "data.plaintextError",
       SETTINGS_INVALID: "config.invalid",
       SETTINGS_UNAVAILABLE: "config.unavailableError",
       AUTH_CANCELED: "device.errorCanceled",

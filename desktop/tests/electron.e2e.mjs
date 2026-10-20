@@ -99,6 +99,12 @@ try {
     node: "undefined",
     process: "undefined",
     methods: [
+      "cloudState", "cloudImport", "cloudConnect", "cloudSave", "cloudSync", "cloudDisconnect", "cloudList", "cloudDownload", "cloudCancel",
+      "backupData",
+      "backupLocation",
+      "chooseBackupDirectory",
+      "exportRecords",
+      "restoreData",
       "billPage",
       "createBill",
       "currentUser",

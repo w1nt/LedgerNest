@@ -93,6 +93,13 @@ export class DeviceSession {
     return this.service;
   }
 
+  /** Scheduler/status polls cannot extend the interactive idle timeout. */
+  backgroundService() {
+    if (this.service && this.expired(this.clock())) this.lock();
+    if (!this.service) throw new AppError(401, "Local data is locked.", "DEVICE_LOCKED");
+    return this.service;
+  }
+
   setIdleMinutes(minutes: number) {
     if (![5, 10, 15, 30].includes(minutes))
       throw new AppError(400, "Invalid idle timeout.");

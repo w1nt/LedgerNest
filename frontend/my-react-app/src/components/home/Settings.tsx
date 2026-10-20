@@ -29,7 +29,7 @@ import Icon from "../ui/Icon";
 import SecretValue from "../ui/SecretValue";
 import SegmentedControl from "../ui/SegmentedControl";
 import Modal from "../ui/Modal";
-import InfoDialog from "../ui/InfoDialog";
+import DataPanel from "./DataPanel";
 import IntegrationDialog from "./IntegrationDialog";
 const tabs = [
   { id: "general", key: "config.general", icon: "sun" },
@@ -565,35 +565,7 @@ export default function Settings() {
             )}
             {tab === "data" && (
               <>
-                <Panel
-                  title={t("config.dataTitle")}
-                  icon="download"
-                  className="settings-panel"
-                >
-                  <Row
-                    title={t("config.localStorage")}
-                    note={t("config.localStorageNote")}
-                  >
-                    <span className="config-badge stored">
-                      {t("config.onDevice")}
-                    </span>
-                  </Row>
-                  <Row
-                    title={t("config.portableBackup")}
-                    note={t("config.backupNote")}
-                  >
-                    <InfoDialog title={t("config.portableBackup")}>
-                      <p>{t("config.backupInstructions")}</p>
-                      <p>{t("config.credentialsBackupNote")}</p>
-                    </InfoDialog>
-                  </Row>
-                  <Row
-                    title={t("config.cloudBackup")}
-                    note={t("config.cloudNote")}
-                  >
-                    <span className="config-badge">{t("config.planned")}</span>
-                  </Row>
-                </Panel>
+                <DataPanel isDemo={isDemo} />
                 <Panel
                   title="LedgerNest"
                   icon="overview"

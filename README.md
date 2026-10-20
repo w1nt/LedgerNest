@@ -1,194 +1,187 @@
 # LedgerNest
 
-A local-first personal finance and analytics tool, with user-provided API credentials.
+A free, open-source desktop finance tool built with Electron, React and encrypted SQLite. Your records stay on your computer, with optional encrypted backups to your own Google Drive. No author-hosted account or API server is required.
 
-LedgerNest is a free, open-source project intended to run on your own computer. Its goal is to sync authorized bank transactions using your own Plaid credentials, categorize and analyze data locally, and optionally connect to an AI API of your choice.
+**Version: `0.1.0-SNAPSHOT` — development preview.** The current data model contains bills and settlement records. Bank transaction syncing and AI analysis are planned; saving Plaid or AI credentials does not connect those services. The project does not execute payments, direct debits, collections or fund transfers.
 
-## Current Status
-
-**`0.1.0-SNAPSHOT` is a migration baseline extracted from an existing billing application, not a finished Plaid-powered desktop product.** The desktop now runs React in Electron, with a TypeScript local business layer and embedded SQLite. Device unlock, local profile access, bill listing, creation, overview and charts use validated IPC; they do not require Java, MySQL or a listening HTTP server. The Java backend remains as a migration reference for operations not yet ported. Plaid Link, bank transaction syncing, guided first-run setup, and an AI agent are not implemented. The roadmap below describes planned work, not completed features.
+## Current Features
 
 | Feature | Status |
 | --- | --- |
-| Bill lists, search, filters, creation, overview, and trend charts | Existing prototype |
-| Chinese and English interfaces, themes, shared dropdowns, and amount tooltips | Existing prototype |
-| Electron main/preload, SQLite and OS-authenticated local sessions | Implemented for the current UI; validated capability-based IPC |
-| Plaid / AI configuration and secure credential editing | Implemented locally; saved configurations do not make API requests |
-| Plaid Link authorization | Not implemented |
-| Historical transaction imports, incremental syncing, and reconciliation | Not implemented |
-| Windows Hello / macOS device unlock | Adapter/UI implemented; Windows native acceptance blocked by local unsigned-code policy, macOS untested |
-| Encrypted embedded local storage | Implemented with SQLite3MultipleCiphers, OS-protected keys and passphrase backups |
-| Guided first-run setup, installers and signed distribution | Not implemented |
-| Personalized local rules, budgets, and reminders | Not implemented |
-| User-provided AI API and optional analysis assistant | Future extension |
+| Bill overview, search, filters, creation and trend charts | Implemented with local data |
+| Chinese/English, light/dark themes, density and reduced motion | Implemented |
+| Device unlock and automatic locking | Windows/macOS adapters implemented; real device prompts require platform acceptance testing |
+| Encrypted SQLite and OS-protected database keys | Implemented |
+| Local encrypted backup and restore | Implemented in Settings and at the unlock screen |
+| Plaintext CSV/JSON export | Implemented for all local bill records |
+| Google Drive manual and scheduled encrypted backup | Implemented with UI; real-account acceptance testing remains |
+| Plaid and optional AI configuration | Encrypted local configuration only |
+| Bank authorization, transaction sync and reconciliation | Not implemented |
+| AI requests, budgets, custom rules and reminders | Not implemented |
+| Installers and signed distribution | Not implemented; run from source |
 
-The existing bill and settlement models are inherited prototype features, not a bank transaction model. The payment gateway remains disabled and does not charge accounts. This project does not provide payments, direct debits, payment collection, or fund transfers, and will not extend the payment gateway.
+## Run Locally
 
-## Product Boundaries
-
-- The project author does not host user accounts, bank credentials, or financial databases. Users run the application and keep their data locally.
-- Bank syncing still requires internet access to Plaid and participating banks. Local-first does not mean fully offline.
-- Users must obtain their own Plaid developer account, API access, and bank authorization. The project does not bundle, share, or issue API keys.
-- The initial integration targets capabilities available through Plaid Trial. Compatibility and limits remain subject to Plaid's rules; this is not a promise of permanently free access.
-- Basic syncing and analysis should not require an AI API. Optional third-party AI integrations must disclose what data is sent. Financial calculations remain deterministic and local; API keys must not be passed to the model.
-- Investment trading, payment execution, and a publicly hosted service are outside the project scope.
-
-## Initial Roadmap
-
-1. Extend the implemented local configuration and secure credential editor into a guided first-run setup.
-2. Add Plaid Link authorization and persist accounts and connections to avoid creating duplicate connections.
-3. Introduce a separate bank transaction model. Use `/transactions/sync` with persisted cursors to handle pagination, additions, modifications, and removals.
-4. Reconcile pending and posted transactions, refunds, transfers, and credit card repayments to avoid double-counting income or expenses.
-5. Add transaction search, categories, tags, income and expense summaries, trends, and local data export, backup, and deletion.
-6. Once the data workflow is reliable, add local rules and optional AI query and analysis tools.
-
-Historical coverage depends on the bank and authorization. An initial request can ask for up to 730 days, with a default of 90 days; a complete history since account opening is not guaranteed. Future bills, such as utilities not yet charged, must not be represented as existing transactions. Plaid Trial currently limits cumulative Item creation to 10, and deleting an Item does not restore that allowance. Access tokens and sync cursors must be persisted.
-
-Syncing is planned at startup, on demand, and periodically while the application runs, without an author-hosted public webhook. No background work is promised while the application is closed; the next startup catches up. Reading updates already available in Plaid does not mean the bank has refreshed its data immediately.
-
-Official references: [Transactions](https://plaid.com/docs/transactions/) and [Plaid Trial](https://support.plaid.com/hc/en-us/articles/39994173227159-What-is-the-Plaid-Trial-plan).
-
-## Run the Desktop
-
-Requires **Node.js 24.17+** for development. Windows builds use the system .NET Framework 4.8 compiler and WinRT metadata (Windows 11, build 22000+ baseline; older Windows versions are not validated); macOS builds need Xcode Command Line Tools (`xcrun swiftc`). Linux device unlock is currently unsupported and does not fall back to password login. Run from the repository root:
+Requires **Node.js 24.17+** and npm. Run these commands from the repository root:
 
 ```powershell
 npm ci
 npm --prefix frontend/my-react-app ci
-# Optional: create synthetic local test data before opening the app.
-npm run seed:example
 npm start
 ```
 
-`npm start` builds the React UI and Electron main/preload, then opens the desktop application. After a successful build, `npm run start:built` starts it without rebuilding. No Vite server, Spring Boot process, Java runtime, MySQL server or database credentials are needed. Installers and platform signing are a later milestone; these commands run from source.
+`npm start` builds the frontend and Electron main/preload, then opens LedgerNest. After building, use `npm run start:built` to launch without rebuilding. Java, MySQL and a Vite server are not required.
 
-In source development the database remains `data/ledgernest.sqlite`, preserving the earlier SQLite migration. `LEDGERNEST_DB_PATH` overrides the file; relative paths resolve from the repository root. A packaged application is designed to use Electron's per-user application data directory, but packaging and migration into that directory are not yet implemented. After successful device authentication, an empty database is initialized automatically; existing unknown schemas and newer schema versions are rejected without resetting them. Fixtures are never inserted automatically.
+Platform requirements:
 
-On the unlock screen, choose **Unlock workspace** and complete the system prompt. Windows uses **Windows Hello** (PIN, face or fingerprint, according to your device settings); LedgerNest never reads your Windows password. Configure Hello in Windows sign-in options if it is unavailable. macOS uses LocalAuthentication with Touch ID or the Mac login password. A failed, canceled or unavailable verification leaves storage closed; there is no automatic password or availability-only fallback.
+- **Windows:** native-helper builds use the system .NET Framework 4.8 compiler and WinRT metadata. Windows 11/build 22000+ is the development baseline; older versions are unvalidated. Application-control policies may block an unsigned helper.
+- **macOS:** builds require Xcode Command Line Tools (`xcrun swiftc`). Native authentication and Keychain behavior still need validation on a Mac.
+- **Linux:** native device unlock is not implemented.
 
-One OS account opens one local profile. On an empty database the profile is created after verification, using the OS username. A sole existing profile is adopted without changing IDs or bills. Multiple profiles in a legacy database are refused pending an explicit separation workflow. The optional seeder retains the synthetic `example` profile, historical credentials `example@example.com` / `example123`, and 32 bills; those credentials are no longer entered in the desktop UI. Running the seeder again skips existing fixtures and does not reset credentials. Seed before first use of a new empty vault; it refuses to add an unrelated example profile to a vault already owned by another profile. The separate demo entry uses in-memory examples and never unlocks the financial database.
+The unlock screen uses Windows Hello or macOS LocalAuthentication. LedgerNest does not read your OS password. Failed, canceled or unavailable verification leaves the database closed; there is no password fallback. Availability checks and automated verification fixtures do not prove a real device prompt has succeeded. If native unlock is unavailable, the in-memory demo can still preview the interface.
 
-The database now encrypts pages automatically. Keys, database files, recovery snapshots and portable backups are ignored by Git. Read the storage section below before copying data to another device. Do not put a live database on a network drive or treat file synchronization as database synchronization.
+### Example Data
 
-Windows application-control policies may block the locally compiled, unsigned `desktop/dist/ledgernest-auth.exe`. Availability alone does not prove the real prompt works. When an existing **trusted code-signing certificate** is available in `Cert:\CurrentUser\My`, its non-secret thumbprint can be supplied before building:
+Before first use of a new vault, optionally run:
 
 ```powershell
-$env:LEDGERNEST_WINDOWS_SIGNING_THUMBPRINT = "YOUR_EXISTING_TRUSTED_CERTIFICATE_THUMBPRINT"
-npm run build:desktop
+npm run seed:example
 ```
 
-The build signs only the authentication helper using that certificate and requires a Valid Authenticode result. It does not create certificates, modify trust stores, disable application control, or add an authentication fallback. This optional signing branch has not been exercised here because no code-signing certificate is installed. Timestamping and signed installer/application distribution remain later packaging work; an enterprise policy may additionally require its administrator to approve the signer. If policy blocks the helper, the app stays locked and the in-memory demo remains available.
+Close LedgerNest first and complete the system verification prompt. This creates the synthetic `example` profile with 32 sample bills. Existing fixtures are preserved; the tool refuses to add a second profile to another user's vault. The old example email/password are not used by the desktop unlock screen. Demo mode uses separate in-memory examples and does not open your database.
 
-### Legacy Browser Preview
+### Local Data Location
 
-The retained HTTP adapter and Java backend are migration references. `npm --prefix frontend/my-react-app run dev` can preview the new unlock screen and in-memory demo in a browser; device unlock requires Electron and stays disabled there. The shared UI no longer offers browser account/password login. Any direct regression work with `backend/SpringBoot_demo/start-local.ps1` must use a separate, disposable plaintext database and JDK 17+. The Java driver cannot open the encrypted desktop database. No Java or Vite process is part of normal desktop startup; desktop sessions use main-process memory rather than cookies.
+Source builds use `data/ledgernest.sqlite`. Set `LEDGERNEST_DB_PATH` to use another path; relative paths resolve from the repository root. After successful device verification, a new vault is initialized automatically. Unknown schemas, missing keys and corrupt storage are rejected without resetting existing data.
 
-## Settings and API Configuration
+A vault supports one local profile. Keep the live database outside cloud-synced or network folders. Copying its `.key` file to another OS account is not a portable recovery method; create an encrypted backup instead. Installers and migration into a packaged per-user data directory remain future work.
 
-Settings now groups **Appearance**, **APIs & connections**, **Privacy & security**, and **Data & backups**. Theme/language, comfortable or compact density, and reduced motion work immediately. Non-sensitive display preferences are stored locally in the UI profile; they survive reloads. System reduced motion always takes priority. Automatic locking supports 5/10/15/30 minutes and updates the main-process policy; system lock/sleep and the 8-hour session cap remain enforced. The displayed app version comes from the root `VERSION` during the build.
+## Settings
 
-After unlocking, users can save their own configuration:
+Settings contains **Appearance**, **APIs & connections**, **Privacy & security**, and **Data & backups**.
 
-| Service | Configurable fields | Current capability |
-| --- | --- | --- |
-| Plaid | Sandbox or Trial/Production, Client ID, environment-specific Secret | Local configuration only; bank Link and transaction sync are not connected |
-| AI | DeepSeek, OpenAI, Anthropic or a custom compatible provider; API base URL, model ID, API Key | Local configuration only; no AI request or data sharing |
+- Customize language, theme, comfortable/compact density and motion. System reduced motion takes priority.
+- Set automatic locking to 5, 10, 15 or 30 minutes. System lock, suspend and user changes also lock the vault; sessions have an 8-hour maximum. Background sync and status polling do not extend the idle timeout.
+- Configure your own Plaid environment/Client ID/Secret, or an optional AI provider, HTTPS endpoint, model and API key. These are saved locally; bank authorization and AI calls are not implemented.
+- Stored API credentials show only a masked prefix/suffix, with no reveal or copy control. Blank edits retain existing credentials; changing provider identity or endpoint requires a matching new secret.
 
-Trial uses Plaid's Production environment; it is not a separate API hostname. Use developer credentials rather than bank login credentials. Model IDs are entered by the user rather than assuming a permanently available model. Preset API addresses are fixed to their provider; custom addresses require HTTPS without embedded credentials, queries or fragments, literal IPs or local hostnames. This validates configuration syntax only; DNS/redirect/network restrictions will be required when actual integrations are implemented. See [Plaid API overview](https://plaid.com/docs/api/), [DeepSeek API](https://api-docs.deepseek.com/), [OpenAI API reference](https://platform.openai.com/docs/api-reference/introduction), and [Anthropic API overview](https://platform.claude.com/docs/en/api/overview).
+API/security configuration is OS-encrypted and excluded from portable backups. Re-enter credentials after moving to another device. Demo mode allows appearance changes but cannot change real credentials, cloud configuration or local records.
 
-Credentials are never read back into the renderer. Main-process settings responses contain only four leading and four trailing characters separated by a fixed mask; short values are fully hidden. Stored summaries cannot be selected, dragged or copied through their controls. Entry fields are password inputs with copy/cut/context-menu/drag disabled and paste allowed; there is no reveal or copy button. They are cleared after saves/errors/closing/locking. Leaving a credential blank keeps the existing value. Changing Plaid environment/client identity or AI provider/address requires the matching new secret. Removing configuration requires confirmation and does not revoke provider authorization or delete records. These are UI protections, not protection against a debugger or software controlling the same OS account.
+## Backup, Restore and Export
 
-Security/integration settings are stored next to each database in `<database>.settings`: an OS-protected encrypted envelope (CurrentUser DPAPI on Windows; safeStorage on supported macOS), with restricted file permissions and atomic encrypted writes. No plaintext staging file, key environment variable, API-key browser storage, arbitrary file IPC or read-secret method is provided. Configuration access requires an unlocked vault; malformed, tampered or unavailable storage is refused without resetting existing settings. The financial database remains schema v1 with its original ten tables. Settings, interrupted writes and screenshots are ignored by Git, including when the database has a custom basename.
+Open **Settings → Data & backups** to choose a backup directory, create an encrypted `.lnbackup`, restore a backup, or export readable records. Local save dialogs let you choose filenames; existing files are never overwritten.
 
-Existing portable backups contain **only the financial database**, not this machine-bound API settings file. Re-enter credentials after moving to another OS account/device. In-app backup controls and user-owned cloud recovery remain planned; nothing is uploaded. Demo mode allows display preferences, but cannot save real API credentials or security settings. The previously documented Windows unsigned-helper policy restriction still applies to native unlocking; this work does not bypass that restriction.
+### Encrypted Backups
 
-Unlock now has an entrance, verification pulse and verified handoff. A lock event cancels the handoff before revealing protected pages. Shared cards, buttons, segmented controls, dropdowns and dialogs use common styles; dialog focus returns after unmount without scrolling. Both system and in-app reduced-motion settings disable decorative movement.
+- Include the complete business database, including related settlement/history tables.
+- Exclude API credentials, cloud authorization/settings, UI preferences and backup-directory settings.
+- Require a separate **12–256 character passphrase**, with a **512 MiB database limit**. Manual-backup passphrases are not saved; Google Drive can remember its backup passphrase under OS encryption with explicit consent.
+- Remain encrypted during snapshot creation and transfer. Keep your own copy of the passphrase: system login cannot replace it on another device, and the app cannot recover a lost passphrase.
 
-## Development and Validation
+You can choose a folder synced by your own cloud client for manual backups. That client handles uploading; independently confirm it has finished. Direct Google Drive integration is described below.
 
-- `desktop/`: Electron main/preload, TypeScript business services, SQLite access, isolated fixture tooling and desktop tests.
-- `shared/desktop.ts`: typed renderer capability contract.
-- `database/schema.sql`: desktop schema v1, compatible with the retained Java schema.
-- `frontend/my-react-app/`: React, TypeScript and Vite; existing pages and routes are reused.
-- `backend/SpringBoot_demo/`: retained Java reference, including APIs not yet migrated.
-- `scripts/`: build, startup, fixture and one-time migration utilities.
+### Restore
+
+Restore is available in Settings and at the unlock screen, including when the original database/key cannot be opened. It requires destination-device verification and the backup passphrase. The app validates the backup in a new database, shows the record count for confirmation, then switches the active database and asks you to unlock again.
+
+Restore replaces active records without merging. Previous database/key files remain on the device; failed or canceled restores do not select the new database. Existing API/security settings stay with the installation. Repeated restores use additional disk space.
+
+### Plaintext Export
+
+CSV and JSON export all pages of the current profile's bill and settlement records. They exclude account details, password hashes, API keys and internal operation responses. Confirm that the file is unencrypted before saving it.
+
+CSV headers and settlement labels follow the interface language. CSV uses UTF-8 with a BOM, quoted fields and apostrophe prefixes for formula-like text. JSON preserves original text, stable English field names and state codes. Amounts are exact decimal strings in USD; timestamps are UTC.
+
+Exports are readable copies, not complete recovery archives. Bank transactions are not included because bank sync is not implemented.
+
+## Optional Google Drive Backup
+
+Open **Settings → Data & backups → Google Drive backup**. Sync and automatic mode are both **off by default**. You can upload manually or enable automatic uploads with an interval of **1–720 whole hours**, defaulting to **24 hours**.
+
+Automatic upload runs only while LedgerNest is open and unlocked. The scheduler checks once a minute; unlocking checks for one overdue upload. The first automatic upload is due one interval after enabling, with later uploads scheduled from the last verified success. Closing the app installs no background service or OS task.
+
+### Set Up Your Google Account
+
+1. Create/select your own project in the [Google Cloud console](https://console.cloud.google.com/) and enable **Google Drive API**.
+2. Configure OAuth consent/audience and add your Google account as a test user when required. Declare `https://www.googleapis.com/auth/drive.file`; the app requests per-file access, not full-Drive access.
+3. Create an OAuth client of type **Desktop app** and download its JSON. Keep that credentials file outside the repository. Web clients and service-account credentials are unsupported. See [Google's desktop OAuth guide](https://developers.google.com/identity/protocols/oauth2/native-app).
+4. Unlock LedgerNest, select **Import desktop OAuth configuration**, and choose the JSON. Then click **Connect Google Drive** and authorize in your system browser.
+5. Open **Sync settings**, enter a Drive folder name and backup filename prefix, and enable sync. Set and confirm a backup passphrase and explicitly consent to OS-encrypted local storage. Keep a separate copy for recovery. Saving confirms filenames consisting of your prefix, a UTC timestamp, a random identifier and `.lnbackup`.
+6. Click **Sync to Google Drive now**, or enable **Automatic sync** and save your interval. Manual upload remains available in automatic mode.
+
+The app creates or reuses an app-marked folder; it does not gain arbitrary access to existing Drive folders. Changing the passphrase affects future backups only. Reauthorizing may select another account, so uploads must be explicitly re-enabled afterward.
+
+Google's consent, test-user and publication requirements still apply. External apps left in **Testing** generally receive seven-day refresh tokens for this Drive scope, which may require reconnecting. See [Drive scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth) and [OAuth token expiration](https://developers.google.com/identity/protocols/oauth2#expiration). Real Google authorization and upload have not yet been accepted against a live account; automated tests use synthetic Google responses.
+
+### Uploads and Recovery
+
+- Uploads create independent **encrypted snapshots**. They never upload plaintext exports or replicate the live SQLite database.
+- Resumable transfers use bounded retries and verify remote size/checksum before updating the success time. Failures remain visible; automatic retries use backoff. Expired authorization pauses uploads.
+- **View cloud backups** lists the latest 100 app-marked files in the configured folder. **Download encrypted backup** saves a verified encrypted copy; use **Restore from backup** with its original passphrase to apply it.
+- There is no automatic download, record merging, cloud overwrite or retention deletion. Manage Drive space yourself. Failed transfers can leave an upload session or an extra encrypted version; they are not reported as successful.
+- Use the same Google project/client configuration on another device for app file visibility. With another project, download older backups from the Drive website and restore them locally if necessary.
+- **Disconnect** stops uploads and removes the local refresh token and saved passphrase. It keeps cloud files. Revoke server-side authorization through your Google Account's third-party app permissions when needed.
+
+No author-hosted server is used. Authorization opens a temporary `127.0.0.1` callback listener, protected with PKCE/state validation and a timeout. Tokens stay in the main process; Google endpoints and upload destinations are restricted, and redirects are refused.
+
+## Storage and Security
+
+React runs in a sandboxed Electron renderer and accesses SQLite through a restricted preload/IPC contract. There is no renderer SQL, arbitrary-path file API or raw-credential getter. Money is stored as integer cents; local operations use transactions, ownership checks and schema validation.
+
+SQLite3MultipleCiphers encrypts database pages and WAL data. Random database keys are protected by Windows CurrentUser DPAPI or macOS Keychain/safeStorage. Portable backups use independent keys, scrypt and authenticated encryption. Private file permissions, process locking and encrypted staging protect local files; this does not protect against malware or an administrator controlling an unlocked OS account.
+
+Files beside the original database:
+
+- `.key`: OS-protected database key; not portable between OS accounts.
+- `.settings`: encrypted API/security configuration.
+- `.data-settings`: encrypted backup directory and active-restore selector.
+- `.restores/`: restored databases and their protected keys; do not manually remove the selected files.
+- `.cloud-settings`: encrypted Google configuration, refresh token, backup passphrase and schedule state. Access tokens are memory-only and cleared on lock.
+
+These files, databases, backups, local logs and test artifacts are ignored by Git. Configuration corruption is rejected without silently resetting stored settings. This remains development software; device authentication, signed distribution and real cloud behavior need target-platform acceptance testing.
+
+If a Windows policy blocks the locally compiled helper, an existing trusted code-signing certificate can be selected with `LEDGERNEST_WINDOWS_SIGNING_THUMBPRINT` before `npm run build:desktop`. This does not install certificates, change OS trust/policy or bypass authentication; the optional signing path still needs acceptance testing.
+
+## Development
+
+- `desktop/`: Electron main/preload, local services, encrypted storage, device authentication and Google Drive integration.
+- `shared/`: typed billing, settings, data-tool and cloud contracts.
+- `database/schema.sql`: current SQLite schema v1.
+- `frontend/my-react-app/`: React UI; see its [development notes](frontend/my-react-app/README.md).
+- `backend/SpringBoot_demo/`: retained Java reference, not part of desktop startup; see its [scope](backend/SpringBoot_demo/README.md).
+- `scripts/`: build, startup, storage and optional legacy-import tools. The [MySQL importer](scripts/migrate-mysql-to-sqlite.py) is a one-time migration utility, not a runtime dependency.
 
 ```powershell
-node scripts/sync-version.mjs --check
 npm run build
 npm test
-npm run test:desktop
-npm run test:storage
-npm run test:native # real availability, hidden UI, no verification prompt
-npm run test:settings # isolated credential/settings and motion workflows
 npm --prefix frontend/my-react-app run lint
 npm --prefix frontend/my-react-app run test:security
 npm --prefix frontend/my-react-app run test:i18n
 npm --prefix frontend/my-react-app run test:trends
-# Optional one-time importer tests (Python 3.10+):
-python -m unittest discover -s scripts/tests -v
+npm run test:desktop
+npm run test:settings
+npm run test:data
+npm run test:cloud
+npm run test:storage
+node scripts/sync-version.mjs --check
 ```
 
-Unit tests and the real Electron integration test use temporary databases and profiles. The tests inject verification through a separate executable built under ignored `.local-tools/device-auth-tests/`; the production entry always selects the native verifier and has no test-authentication environment bypass. Automated verification fixtures do not prove a human Windows Hello / macOS prompt has succeeded. The Electron test keeps windows hidden and verifies unlock cancellation, database access gating, manual/OS locking, totals, six chart bars, creation through the UI, restart persistence, isolated renderer capabilities, rejected foreign IPC callers, abrupt-exit recovery with a fresh Chromium profile, and absence of HTTP API requests. To verify an existing example database without modifying it, set `LEDGERNEST_VERIFY_SOURCE=data/ledgernest.sqlite` for `npm run test:desktop`; the closed encrypted database and its OS-protected key file are copied to an isolated test directory. Close every app using the source first; a live lock or nonempty WAL causes this check to refuse the copy. This fixture-specific check expects the original 32 examples and October 2026 summary.
+Electron integration tests use isolated databases/profiles, hidden windows and a separate fixture entry. Google responses and device verification are simulated there; these tests do not authorize a real account or prove native login works. `npm run test:native` only probes actual device-verification availability without submitting a prompt. Production has no environment-variable switch for those fixtures.
 
-Desktop requests follow **React → restricted preload bridge → validated main-frame IPC → local business service → SQLite**. The bridge exposes device availability, unlock, current profile, lock, paginated bills, bill creation, masked settings, security preferences, integration write/remove capabilities and a lock notification; account registration/password login are not exposed. Renderer code has no Node integration, SQL, file paths, OS credentials, database keys or arbitrary IPC access. The sandbox, context isolation, restrictive CSP, custom application protocol, navigation checks, parameterized SQL, integer cents and transactional idempotency apply to this workflow.
+For a browser-only UI/demo preview, run `npm --prefix frontend/my-react-app run dev`. Native unlock and file/cloud operations require Electron. Do not put secrets in `VITE_` variables.
 
-A main-process `DeviceSession` requires native verification before unwrapping keys or opening/creating the database. Lock closes the SQLite handle, releases the file lock, clears the session and notifies React to remove protected pages. System lock, suspend and active-user changes lock the app; it also locks after the configured 5, 10, 15 or 30 minutes without protected application access or OS activity (default 10 minutes), or 8 hours since unlock. Expiry is checked on requests and every five seconds. Pending verification is canceled on lock, and late results cannot reopen the vault. Closing the app also locks it; a reload inside the same unlocked process retains the session. Device verification is an application access gate, not an OS-enforced requirement for every DPAPI/Keychain decryption; software already running as the same unlocked OS user remains outside this protection boundary.
-
-Profile editing, legacy Java preference APIs, bill editing/deletion and standalone summary/reminder/settlement operations are retained in Java and **not exposed by the desktop bridge yet**. Existing charts calculate from the locally loaded bills. No payment execution or bank-sync capability is provided.
-
-All components share the root `VERSION`; future development belongs to this repository. Its history is independent of the private prototype repository. Existing frontend and backend development logs remain local and are excluded by `.gitignore`. Public updates belong in README files. API credentials, local databases, backups and build artifacts must not be committed.
-
-## Local Storage Security and Encrypted Backups
-
-Persistent desktop storage uses `better-sqlite3-multiple-ciphers` 13.0.3 and SQLite3MultipleCiphers' modern `sqlcipher` mode (`legacy=0`): AES-256 page encryption, SHA-512 page HMAC verification, a random 256-bit database secret, and PBKDF2 with 256,000 iterations. Keys are applied through the native binary API rather than SQL literals. The schema remains v1. Use LedgerNest tooling for this cipher format.
-
-`data/ledgernest.sqlite.key` holds an **OS-protected wrapper**, not the clear database key. Windows uses CurrentUser DPAPI directly through a hidden system PowerShell helper, independent of Chromium's Local State file. macOS/Linux use Electron safeStorage; Linux's `basic_text`/unavailable key-store fallback is rejected. No key is supplied by the renderer, a `VITE_` variable, environment variable or command-line argument. An existing encrypted database with a missing, wrong or corrupt key is never silently reset or given a replacement key.
-
-Database/key/recovery files receive a current-user-only Windows DACL, or mode 0600 on POSIX; newly created storage directories use private permissions. WAL page contents are encrypted. Shared-memory sidecars carry SQLite coordination metadata and receive access restrictions. Temporary SQL data is held in memory; foreign keys, strict tables, secure deletion, disabled trusted schema/mmap, FULL synchronization, application file locks and transactional idempotency remain enabled. OS administrators and software acting as the unlocked OS user are outside this protection boundary; live plaintext in application memory is not encrypted by this feature.
-
-Existing valid plaintext LedgerNest databases migrate after successful device verification, or explicitly with:
-
-```powershell
-npm run storage:encrypt
-```
-
-Migration validates the old schema, blocks competing writers, copies and compares all ten tables and sequence counters into a new database that is encrypted before its first write, and verifies integrity before publication. An encrypted `ledgernest.sqlite.migration-<id>.sqlite` recovery snapshot is retained next to the original path. It uses the same wrapped key. The original path is replaced only after verification; unknown databases are refused. Existing accounts, password hashes, bill IDs, timestamps and amounts are retained. Old external exports, OS snapshots or previously deleted plaintext blocks are not erased by this migration.
-
-Close the application before running storage commands. All storage CLI operations (including seed, encrypt, backup and restore) require system device verification before opening storage or restoring data; cancellation fails closed. The system prompt is interactive even though the storage helper window stays hidden. To make a **portable backup**, choose a new output path:
+Optional storage CLI commands require closing LedgerNest first and completing device verification:
 
 ```powershell
 npm run storage:backup -- "FULL_PATH_TO_NEW_FILE.lnbackup"
-```
-
-The terminal asks for and confirms a 12–256 character passphrase with input hidden. It is sent to the hidden storage process over stdin only. Each backup has a fresh database key, wrapped with scrypt (`N=131072, r=8, p=1`) and AES-256-GCM. The authenticated envelope also binds a SHA-256 digest of the encrypted SQLite payload. Staging snapshots are encrypted from their first write; normal completion and failures clean up temporary backup files. Existing destinations are never overwritten. Backup format v1 supports files up to 512 MiB and needs roughly 128 MiB of working memory for scrypt.
-
-To restore onto another device/OS account, use a **new database path**:
-
-```powershell
 npm run storage:restore -- "FULL_PATH_TO_BACKUP.lnbackup" "FULL_PATH_TO_NEW_DATABASE.sqlite"
 ```
 
-Restore authenticates the passphrase and payload, verifies the SQLite schema/integrity, and wraps the restored key with the destination OS account before publishing the new database. Wrong passwords, damaged files and existing destinations are rejected. Set `LEDGERNEST_DB_PATH` to the restored file before starting the app. The backup does not contain the original machine's OS-key wrapper.
+The terminal reads passphrases privately. CLI restore writes a new target without activating it; set `LEDGERNEST_DB_PATH` to that target before starting the app. Use the in-app restore flow for automatic activation.
 
-Moving the database and `.key` together within the same OS account preserves access; ordinary copies of this pair are not a portable recovery method. Keep a passphrase backup before reinstalling the OS or changing devices. A forgotten backup passphrase or lost OS key without a portable backup cannot be recovered by the project author. The historical example login password is unused by device unlock and remains separate from storage encryption. Backup/restore currently use the terminal; Settings controls and key-rotation UI are later work. Windows key protection and isolated unlock flows are tested here. An initial native availability/COM probe returned available, but a later rebuilt unsigned helper was blocked by the host's Code Integrity policy; the current production availability check therefore returns unavailable. Real Windows unlock is not accepted as working on this host. A trusted signed helper and a human-completed Windows Hello prompt are still required. We do not weaken or bypass OS application-control policies. The macOS helper and Keychain flow need compilation and end-to-end validation on a Mac, followed by signed distribution work. Linux native unlock is not implemented. User-owned cloud destinations and fast cross-device restore are planned for a later milestone; no cloud connection, upload or new backup UI is included.
+## Next Steps
 
-Implementation references: [SQLite3MultipleCiphers cipher settings](https://utelle.github.io/SQLite3MultipleCiphers/docs/ciphers/cipher_sqlcipher/), [Windows DPAPI](https://learn.microsoft.com/en-us/windows/win32/api/dpapi/nf-dpapi-cryptprotectdata), [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage), [Windows desktop verification](https://learn.microsoft.com/en-us/uwp/api/windows.security.credentials.ui.userconsentverifier), [macOS owner authentication](https://developer.apple.com/documentation/localauthentication/lapolicy/deviceownerauthentication).
-
-## SQLite Migration and Test Account
-
-The SQLite schema uses strict tables, foreign keys on every connection, WAL, and IMMEDIATE transactions. Monetary values are stored as **integer USD cents**; API amounts remain decimal strings. UTC timestamps are fixed-width text. This retains the existing bill API and does not implement bank syncing or payments.
-
-The test account and fixtures are created by `npm run seed:example` using a hidden Electron storage tool with the same OS key protection as the app. No Java, HTTP server or normal application window is required; the OS verification dialog must be completed. No sample database or real account data is shipped in Git.
-
-For an existing legacy MySQL database, the optional one-time importer requires Python 3.10+ (SQLite 3.37+) and the MySQL CLI:
-
-```powershell
-# Set MYSQL_PWD in this terminal using your own source database credentials.
-python scripts/migrate-mysql-to-sqlite.py --user YOUR_READ_USER --database YOUR_DATABASE --output data/imported.sqlite
-```
-
-The legacy importer produces a plaintext SQLite file; keep it in a private directory and run the desktop encryption migration against that path before normal use. It does not produce a portable encrypted backup. The importer uses a read-only consistent snapshot, preserves IDs/password hashes/timestamps, converts money without rounding, and verifies every row plus foreign keys and integrity. It refuses to overwrite an existing destination. Stop the application and set `LEDGERNEST_DB_PATH` to the imported file before starting it. Clear `MYSQL_PWD` from the terminal when finished. This importer is optional; MySQL is not a runtime dependency.
+Add guided first-run setup, a separate bank transaction model, Plaid authorization/cursor-based sync and reconciliation, transaction analysis, and optional user-provided AI tools. Bank coverage, access and limits depend on the provider; the existing bill model is not a bank ledger. Complete native/cloud acceptance testing and signed packaging before distribution.
 
 ## License
 

@@ -14,6 +14,20 @@ export function trustedURL(value: string) {
   }
 }
 export const channels = Object.freeze({
+  cloudState: "cloud:state",
+  cloudImport: "cloud:import",
+  cloudConnect: "cloud:connect",
+  cloudSave: "cloud:save",
+  cloudSync: "cloud:sync",
+  cloudDisconnect: "cloud:disconnect",
+  cloudList: "cloud:list",
+  cloudDownload: "cloud:download",
+  cloudCancel: "cloud:cancel",
+  backupLocation: "data:location",
+  chooseBackupDirectory: "data:directory",
+  backupData: "data:backup",
+  exportRecords: "data:export",
+  restoreData: "data:restore",
   settings: "settings:get",
   saveSecurity: "settings:security",
   saveIntegration: "settings:integration",

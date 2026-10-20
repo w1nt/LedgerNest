@@ -288,3 +288,29 @@ export async function removeIntegration(
     );
   return local(bridge.removeIntegration({ kind }));
 }
+
+function dataBridge() {
+  const bridge = desktopBridge();
+  if (!bridge) throw new DesktopRequestError(409, "Desktop storage is unavailable.", "AUTH_DESKTOP_REQUIRED");
+  return bridge;
+}
+export async function getBackupLocation() { return local(dataBridge().backupLocation()); }
+export async function chooseBackupDirectory() { return local(dataBridge().chooseBackupDirectory()); }
+export async function backupData(password: string, confirmation: string) { return local(dataBridge().backupData({ password, confirmation })); }
+export async function exportRecords(format: import("../../../../shared/data-tools").ExportFormat, locale: "zh-CN" | "en-US") {
+  return local(dataBridge().exportRecords({ format, plaintextConfirmed: true, locale }));
+}
+export async function restoreData(password: string, locale: "zh-CN" | "en-US") {
+  // Recovery must also work while locked; it performs its own OS verification in main.
+  return desktopResult(dataBridge().restoreData({ password, locale }));
+}
+
+export async function getCloudState() { return local(dataBridge().cloudState()); }
+export async function importCloudClient() { return local(dataBridge().cloudImport()); }
+export async function connectCloud() { return local(dataBridge().cloudConnect()); }
+export async function saveCloud(value: import("../../../../shared/cloud").CloudSettingsInput) { return local(dataBridge().cloudSave(value)); }
+export async function syncCloud() { return local(dataBridge().cloudSync()); }
+export async function disconnectCloud() { return local(dataBridge().cloudDisconnect()); }
+export async function listCloudBackups() { return local(dataBridge().cloudList()); }
+export async function downloadCloudBackup(id: string) { return local(dataBridge().cloudDownload({ id })); }
+export async function cancelCloud() { return local(dataBridge().cloudCancel()); }

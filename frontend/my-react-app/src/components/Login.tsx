@@ -11,6 +11,7 @@ import {
 import type { DeviceStatus } from "../../../../shared/desktop";
 import { waitForUnlock } from "../lib/motion";
 import { safeReturnPath } from "../security/validation";
+import DataDialog from "./home/DataDialog";
 import Brand from "./ui/Brand";
 import ThemeControl from "./ui/ThemeControl";
 import Icon from "./ui/Icon";
@@ -23,6 +24,7 @@ export default function Login() {
     [checking, setChecking] = useState(true),
     [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [recovering, setRecovering] = useState(false), [recovered, setRecovered] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
   const request = useRef<AbortController | null>(null),
     submitting = useRef(false);
@@ -219,7 +221,7 @@ export default function Login() {
             type="button"
             data-testid="device-unlock"
             onClick={() => void unlock()}
-            disabled={checking || loading || !available}
+            disabled={checking || loading || recovering || !available}
             aria-busy={loading}
             aria-describedby="unlock-explanation"
           >
@@ -246,6 +248,8 @@ export default function Login() {
               {t("device.checkAgain")}
             </button>
           )}
+          <button type="button" className="unlock-recheck" disabled={checking || loading || recovering || !available} onClick={() => { setRecovered(false); setRecovering(true); }}>{t("data.restore")}</button>
+          {recovered && <p role="status" className="data-success">{t("data.restored")}</p>}
           <p className="unlock-explanation" id="unlock-explanation">
             <Icon name="lock" />
             {t("device.explanation")}
@@ -254,7 +258,7 @@ export default function Login() {
             <span>{t("device.demoLead")}</span>
             <button
               type="button"
-              disabled={loading}
+              disabled={loading || recovering}
               onClick={() => {
                 startDemo();
                 navigate("/home/homepage");
@@ -266,6 +270,7 @@ export default function Login() {
           </div>
         </section>
       </main>
+      {recovering && <DataDialog action="restore" onClose={() => setRecovering(false)} onDone={() => { setRecovering(false); setRecovered(true); setFailure(null); }} />}
       <footer className="unlock-footer">
         <span>© {new Date().getFullYear()} LedgerNest</span>
         <span>{t("device.footer")}</span>

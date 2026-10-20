@@ -1,5 +1,6 @@
 /** Isolated test executable. Not bundled into the production main/preload. */
 import { resolve, isAbsolute } from "node:path";
+import { cloudFixture } from "./cloud-fixture.ts";
 import { runDesktop } from "../runtime.ts";
 import { AppError } from "../errors.ts";
 import type { DeviceAuthenticator } from "../device-auth.ts";
@@ -27,4 +28,5 @@ runDesktop(auth, {
   hidden: true,
   profile,
   systemIdleSeconds: () => 0,
+  ...(process.env.LEDGERNEST_TEST_CLOUD_CLIENT ? { cloudDependencies: cloudFixture } : {}),
 });
